@@ -8,6 +8,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DEBUG
+        value: "true"  # Add this for more verbose logging
     disk:
       name: uploads
       mountPath: /var/data/uploads

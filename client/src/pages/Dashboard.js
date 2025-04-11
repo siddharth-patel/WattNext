@@ -54,6 +54,10 @@ const SectionHeading = ({ children }) => (
 );
 
 export default function Dashboard({ data, isLoading }) {
+  // Log when component renders
+  console.log("Dashboard component rendering");
+  console.log("Is loading:", isLoading);
+  console.log("Data received:", data);
   // Process data for charts
   const energyTypeDistribution = React.useMemo(() => {
     if (!data.energyData || data.energyData.length === 0) return [];

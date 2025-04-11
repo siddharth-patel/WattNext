@@ -51,7 +51,13 @@ let dashboardData = {
 // Extract data from PDF
 async function extractDataFromPDF(filePath, fileName) {
   try {
+    // Log when extraction starts
+    console.log(`Starting PDF extraction for ${fileName}`);
+    
     const data = await pdfExtract.extract(filePath);
+    
+    // Log after successful extraction
+    console.log(`Successfully extracted ${data.pages.length} pages from PDF ${fileName}`);
     
     // Initialize extracted data
     let extractedData = {
@@ -65,23 +71,33 @@ async function extractDataFromPDF(filePath, fileName) {
     
     // Combine all page content for searching
     const allText = data.pages.map(page => page.content.map(item => item.str).join(' ')).join(' ');
+    console.log(`Combined text length: ${allText.length} characters`);
     
     // Extract organization name
     const orgMatch = allText.match(/For:\s*([^\n]+)/);
     if (orgMatch) {
       extractedData.organizationName = orgMatch[1].trim();
+      console.log(`Found organization name: ${extractedData.organizationName}`);
+    } else {
+      console.log("No organization name found in PDF");
     }
     
     // Extract emissions reduction
     const emissionsMatch = allText.match(/emissions by (\d+)%/);
     if (emissionsMatch) {
       extractedData.emissionsReductionPct = parseInt(emissionsMatch[1]);
+      console.log(`Found emissions reduction percentage: ${extractedData.emissionsReductionPct}%`);
+    } else {
+      console.log("No emissions reduction percentage found in PDF");
     }
     
     // Extract cost savings
     const savingsMatch = allText.match(/energy spend by [€$]([0-9,]+)/);
     if (savingsMatch) {
       extractedData.totalCostSavings = parseFloat(savingsMatch[1].replace(/,/g, ''));
+      console.log(`Found total cost savings: €${extractedData.totalCostSavings}`);
+    } else {
+      console.log("No cost savings found in PDF");
     }
     
     // Find energy consumption data
@@ -89,17 +105,24 @@ async function extractDataFromPDF(filePath, fileName) {
       const pageText = data.pages[i].content.map(item => item.str).join(' ');
       
       if (pageText.includes("Energy source") && pageText.includes("Annual Cost") && pageText.includes("Annual Use")) {
+        console.log(`Found energy consumption table on page ${i+1}`);
+        
         // Look for electricity data
         const elecRegex = /Electricity[^\n]*?€([0-9,.]+)[^\n]*?([0-9,.]+)\s*kWh[^\n]*?([0-9,.]+)/;
         const elecMatch = pageText.match(elecRegex);
         
         if (elecMatch) {
-          extractedData.energyData.push({
+          const item = {
             type: "Electricity",
             cost: parseFloat(elecMatch[1].replace(/,/g, '')),
             usage: parseFloat(elecMatch[2].replace(/,/g, '')),
             emissions: parseFloat(elecMatch[3].replace(/,/g, ''))
-          });
+          };
+          
+          extractedData.energyData.push(item);
+          console.log(`Found electricity data: ${JSON.stringify(item)}`);
+        } else {
+          console.log("No electricity data found in energy table");
         }
         
         // Look for gas/oil data
@@ -107,18 +130,26 @@ async function extractDataFromPDF(filePath, fileName) {
         const gasMatch = pageText.match(gasRegex);
         
         if (gasMatch) {
-          extractedData.energyData.push({
+          const item = {
             type: gasMatch[1],
             cost: parseFloat(gasMatch[2].replace(/,/g, '')),
             usage: parseFloat(gasMatch[3].replace(/,/g, '')),
             emissions: parseFloat(gasMatch[4].replace(/,/g, ''))
-          });
+          };
+          
+          extractedData.energyData.push(item);
+          console.log(`Found ${gasMatch[1]} data: ${JSON.stringify(item)}`);
+        } else {
+          console.log("No gas/oil data found in energy table");
         }
       }
       
       // Look for recommended actions
       if (pageText.includes("Recommended actions") || pageText.includes("recommended actions")) {
+        console.log(`Found recommended actions section on page ${i+1}`);
+        
         const actionMatches = pageText.matchAll(/([A-Za-z\s]+)\s+([0-9,.]+)\s+(?:[A-Za-z\- ]+)\s+€([0-9,.]+)\s+([0-9,.]+)/g);
+        let actionsFound = 0;
         
         for (const match of actionMatches) {
           const actionName = match[1].trim();
@@ -127,34 +158,55 @@ async function extractDataFromPDF(filePath, fileName) {
           const emissionsReduction = parseFloat(match[4].replace(/,/g, ''));
           
           if (energySavings > 0 || costSavings > 0) {
-            extractedData.recommendedActions.push({
+            const action = {
               name: actionName,
               energySavings: energySavings,
               costSavings: costSavings,
               emissionsReduction: emissionsReduction
-            });
+            };
             
+            extractedData.recommendedActions.push(action);
             extractedData.totalEnergySavings += energySavings;
             extractedData.totalEmissionsSaved += emissionsReduction;
+            
+            actionsFound++;
+            console.log(`Found action: ${actionName}, energy savings: ${energySavings}, cost savings: €${costSavings}`);
           }
         }
+        
+        console.log(`Total actions found: ${actionsFound}`);
       }
     }
     
+    // Log the final extracted data summary
+    console.log("Extraction complete. Summary:");
+    console.log(`- Organization: ${extractedData.organizationName}`);
+    console.log(`- Total energy savings: ${extractedData.totalEnergySavings} kWh`);
+    console.log(`- Total cost savings: €${extractedData.totalCostSavings}`);
+    console.log(`- Total emissions saved: ${extractedData.totalEmissionsSaved} tonnes`);
+    console.log(`- Energy data entries: ${extractedData.energyData.length}`);
+    console.log(`- Recommended actions: ${extractedData.recommendedActions.length}`);
+    
     return extractedData;
   } catch (error) {
-    console.error(`Error processing ${fileName}:`, error);
+    console.error(`ERROR processing ${fileName}:`, error);
+    console.error(`Error stack: ${error.stack}`);
     return null;
   }
 }
 
 // API Endpoints
 app.post('/api/upload', upload.single('file'), async (req, res) => {
+  console.log("----------------------------");
+  console.log("Upload endpoint called");
+  console.log("----------------------------");
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+    console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    console.log(`Saved to: ${req.file.path}`);
+
     const filePath = req.file.path;
     const fileName = req.file.originalname;
     
@@ -206,10 +258,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 });
 
 app.get('/api/dashboard', (req, res) => {
+  console.log("Dashboard endpoint called");
+  console.log(`Returning data with ${dashboardData.reports.length} reports`);
   res.json(dashboardData);
 });
 
 app.get('/api/reports', (req, res) => {
+  console.log("Reports endpoint called");
+  console.log(`Returning ${dashboardData.reports.length} reports`);
   res.json(dashboardData.reports);
 });
 
