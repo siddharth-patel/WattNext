@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: wattnext-dashboard
+    env: node
+    buildCommand: npm install && npm run client-install && npm run heroku-postbuild
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: uploads
+      mountPath: /var/data/uploads
+      sizeGB: 1
