@@ -193,3 +193,44 @@ function App() {
           }
         ]
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateDashboardData = (newData) => {
+    setDashboardData(prevData => ({
+      ...prevData,
+      ...newData
+    }));
+  };
+
+  return (
+    <ChakraProvider theme={theme}>
+      <Router>
+        <Header />
+        <Routes>
+          <Route 
+            path="/" 
+            element={<Dashboard data={dashboardData} isLoading={isLoading} />} 
+          />
+          <Route 
+            path="/upload" 
+            element={<Upload updateDashboard={updateDashboardData} />} 
+          />
+          <Route 
+            path="/reports" 
+            element={<Reports reports={dashboardData.reports} isLoading={isLoading} />} 
+          />
+          {/* Add this new route for test uploads */}
+          <Route 
+            path="/test-upload" 
+            element={<TestUpload />} 
+          />
+        </Routes>
+      </Router>
+    </ChakraProvider>
+  );
+}
+
+export default App;
