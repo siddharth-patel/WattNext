@@ -90,7 +90,8 @@ function initializeSampleData() {
           data: {
             totalCostSavings: 85000,
             totalEmissionsSaved: 120.5,
-            emissionsReductionPct: 42
+            emissionsReductionPct: 42,
+            implementationStatus: "implemented"
           }
         },
         {
@@ -100,7 +101,8 @@ function initializeSampleData() {
           data: {
             totalCostSavings: 105000,
             totalEmissionsSaved: 155.2,
-            emissionsReductionPct: 38
+            emissionsReductionPct: 38,
+            implementationStatus: "in-progress"
           }
         }
       ],
@@ -384,3 +386,193 @@ async function extractDataWithFallback(filePath, fileName) {
       extractedData.grantAmount = Math.round((extractedData.totalCostSavings || 0) * 0.3);
       console.log(`Generated sample grant amount: €${extractedData.grantAmount}`);
     }
+    
+    return extractedData;
+  } catch (error) {
+    console.error(`Error in fallback extraction for ${fileName}:`, error);
+    
+    // Return a minimal data structure to prevent further errors
+    return {
+      organizationName: fileName.replace(".pdf", ""),
+      totalCostSavings: 0,
+      totalEmissionsSaved: 0,
+      totalEnergySavings: 0,
+      grantAmount: 0,
+      implementationStatus: "pending",
+      energyData: [],
+      recommendedActions: []
+    };
+  }
+}
+
+// Initialize default data on server start
+initializeSampleData();
+
+// API Endpoints
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  console.log("----------------------------");
+  console.log("Upload endpoint called");
+  console.log("----------------------------");
+  
+  // Log any additional form fields
+  console.log("Form data received:", req.body);
+  
+  try {
+    if (!req.file) {
+      console.log("Error: No file uploaded");
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    console.log(`Saved to: ${req.file.path}`);
+    
+    try {
+      const extractedData = await extractDataWithFallback(req.file.path, req.file.originalname);
+      
+      if (!extractedData) {
+        console.log("Failed to extract data from PDF");
+        return res.status(400).json({ error: 'Failed to extract data from PDF' });
+      }
+      
+      // Incorporate additional form data into the extracted data
+      if (req.body.grantAmount) {
+        extractedData.grantAmount = parseFloat(req.body.grantAmount);
+      }
+      
+      if (req.body.implementationStatus) {
+        extractedData.implementationStatus = req.body.implementationStatus;
+      }
+      
+      if (req.body.auditorName) {
+        extractedData.auditorName = req.body.auditorName;
+      }
+      
+      if (req.body.buildingType) {
+        extractedData.buildingType = req.body.buildingType;
+      }
+      
+      if (req.body.notes) {
+        extractedData.notes = req.body.notes;
+      }
+      
+      console.log("Enhanced extracted data with form inputs:", extractedData);
+      
+      // Initialize dashboard with sample data if it's the first upload
+      if (dashboardData.totalAudits === 0) {
+        initializeSampleData();
+      }
+      
+      // Update dashboard data
+      dashboardData.totalAudits += 1;
+      dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
+      dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
+      dashboardData.totalGrants += extractedData.grantAmount || 0;
+      
+      if (!dashboardData.organizations.includes(extractedData.organizationName)) {
+        dashboardData.organizations.push(extractedData.organizationName);
+      }
+      
+      dashboardData.energyData = dashboardData.energyData.concat(
+        extractedData.energyData.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
+        extractedData.recommendedActions.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      // Update application status
+      dashboardData.applicationStatus.total += 1;
+      dashboardData.applicationStatus.completed += 1;
+      
+      // Calculate and update audit conversion rate
+      const conversionReports = dashboardData.reports.filter(r => 
+        r.data && r.data.implementationStatus === 'implemented'
+      );
+      
+      if (dashboardData.reports.length > 0) {
+        dashboardData.auditConversion = Math.round((conversionReports.length / dashboardData.reports.length) * 100);
+      }
+      
+      // Add the new report
+      dashboardData.reports.push({
+        fileName: req.file.originalname,
+        organizationName: extractedData.organizationName,
+        uploadDate: new Date().toISOString(),
+        data: extractedData
+      });
+      
+      console.log("Successfully processed file and updated dashboard data");
+      
+      res.json({
+        success: true,
+        extractedData,
+        dashboardData
+      });
+    } catch (extractionError) {
+      console.error("Error during PDF extraction:", extractionError);
+      return res.status(500).json({ error: `Error extracting data: ${extractionError.message}` });
+    }
+  } catch (error) {
+    console.error('Error in upload endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test upload endpoint - just for testing file uploads without PDF processing
+app.post('/api/test-upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.json({ 
+        status: 'error', 
+        message: 'No file uploaded' 
+      });
+    }
+    
+    // Just acknowledge receipt of the file without processing
+    res.json({
+      status: 'success',
+      message: 'File received successfully',
+      file: {
+        name: req.file.originalname,
+        size: req.file.size,
+        path: req.file.path,
+        mimetype: req.file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('Error in test upload:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message 
+    });
+  }
+});
+
+app.get('/api/dashboard', (req, res) => {
+  console.log("Dashboard endpoint called");
+  console.log(`Returning data with ${dashboardData.reports.length} reports`);
+  res.json(dashboardData);
+});
+
+app.get('/api/reports', (req, res) => {
+  console.log("Reports endpoint called");
+  console.log(`Returning ${dashboardData.reports.length} reports`);
+  res.json(dashboardData.reports);
+});
+
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  });
+}
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
