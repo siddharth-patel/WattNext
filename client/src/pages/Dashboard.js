@@ -503,19 +503,19 @@ export default function Dashboard({ data, isLoading }) {
       <Box mb={8}>
         <SectionHeading>Energy Usage Breakdown</SectionHeading>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="380px">
             <Heading size="sm" mb={4}>Energy Type Distribution</Heading>
             {energyTypeDistribution.every(item => item.value === 0) ? (
               <Flex justify="center" align="center" h="80%">
                 <Text color="gray.500">No energy data available. Upload reports to see distribution.</Text>
               </Flex>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="85%">
                 <PieChart>
                   <Pie
                     data={energyTypeDistribution}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     labelLine={false}
                     outerRadius={80}
                     fill="#8884d8"
@@ -527,7 +527,7 @@ export default function Dashboard({ data, isLoading }) {
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => `${value.toLocaleString()} kWh`} />
-                  <Legend />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
