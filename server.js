@@ -49,24 +49,18 @@ let dashboardData = {
   reports: []
 };
 
-// Extract data from PDF
-// Then add this fallback function:
-async function extractDataWithFallback(filePath, fileName) {
+// Primary PDF extraction function
+async function extractDataFromPDF(filePath, fileName) {
   try {
-    // Try the primary method first
-    const result = await extractDataFromPDF(filePath, fileName);
-    if (result) return result;
+    // Log when extraction starts
+    console.log(`Starting PDF extraction for ${fileName}`);
     
-    // If primary method fails, try the fallback
-    console.log("Primary extraction failed, trying fallback method...");
-    const dataBuffer = fs.readFileSync(filePath);
-    const pdfData = await pdfParse(dataBuffer);
+    const data = await pdfExtract.extract(filePath);
     
-    // Process the text content from pdf-parse
-    const text = pdfData.text;
-    console.log(`Extracted ${text.length} characters of text using fallback method`);
+    // Log after successful extraction
+    console.log(`Successfully extracted ${data.pages.length} pages from PDF ${fileName}`);
     
-    // Do basic extraction with the fallback text
+    // Initialize extracted data
     let extractedData = {
       organizationName: "Unknown",
       totalCostSavings: 0,
@@ -76,11 +70,17 @@ async function extractDataWithFallback(filePath, fileName) {
       recommendedActions: []
     };
     
+    // Combine all page content for searching
+    const allText = data.pages.map(page => page.content.map(item => item.str).join(' ')).join(' ');
+    console.log(`Combined text length: ${allText.length} characters`);
+    
     // Extract organization name
-    const orgMatch = text.match(/For:\s*([^\n]+)/);
+    const orgMatch = allText.match(/For:\s*([^\n]+)/);
     if (orgMatch) {
       extractedData.organizationName = orgMatch[1].trim();
       console.log(`Found organization name: ${extractedData.organizationName}`);
+    } else {
+      console.log("No organization name found in PDF");
     }
     
     // Extract emissions reduction
@@ -149,7 +149,7 @@ async function extractDataWithFallback(filePath, fileName) {
       if (pageText.includes("Recommended actions") || pageText.includes("recommended actions")) {
         console.log(`Found recommended actions section on page ${i+1}`);
         
-        const actionMatches = pageText.matchAll(/([A-Za-z\s]+)\s+([0-9,.]+)\s+(?:[A-Za-z\- ]+)\s+€([0-9,.]+)\s+([0-9,.]+)/g);
+        const actionMatches = Array.from(pageText.matchAll(/([A-Za-z\s]+)\s+([0-9,.]+)\s+(?:[A-Za-z\- ]+)\s+€([0-9,.]+)\s+([0-9,.]+)/g));
         let actionsFound = 0;
         
         for (const match of actionMatches) {
@@ -190,8 +190,83 @@ async function extractDataWithFallback(filePath, fileName) {
     
     return extractedData;
   } catch (error) {
-    console.error(`Error in fallback extraction for ${fileName}:`, error);
+    console.error(`ERROR processing ${fileName}:`, error);
+    console.error(`Error stack: ${error.stack}`);
     return null;
+  }
+}
+
+// Fallback extraction function
+async function extractDataWithFallback(filePath, fileName) {
+  try {
+    // Try the primary method
+    console.log("Attempting primary extraction method...");
+    let result = null;
+    
+    try {
+      result = await extractDataFromPDF(filePath, fileName);
+    } catch (err) {
+      console.log("Primary extraction failed:", err.message);
+    }
+    
+    if (result) {
+      console.log("Primary extraction succeeded");
+      return result;
+    }
+    
+    // If primary method fails, try the fallback
+    console.log("Primary extraction failed or returned no data, trying fallback method...");
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(dataBuffer);
+    
+    // Process the text content from pdf-parse
+    const text = pdfData.text;
+    console.log(`Extracted ${text.length} characters of text using fallback method`);
+    
+    // Create basic extracted data
+    let extractedData = {
+      organizationName: "Unknown",
+      totalCostSavings: 0,
+      totalEmissionsSaved: 0,
+      totalEnergySavings: 0,
+      energyData: [],
+      recommendedActions: []
+    };
+    
+    // Extract organization name
+    const orgMatch = text.match(/For:\s*([^\n]+)/);
+    if (orgMatch) {
+      extractedData.organizationName = orgMatch[1].trim();
+      console.log(`Found organization name: ${extractedData.organizationName}`);
+    }
+    
+    // Extract emissions reduction
+    const emissionsMatch = text.match(/emissions by (\d+)%/);
+    if (emissionsMatch) {
+      extractedData.emissionsReductionPct = parseInt(emissionsMatch[1]);
+      console.log(`Found emissions reduction percentage: ${extractedData.emissionsReductionPct}%`);
+    }
+    
+    // Extract cost savings
+    const savingsMatch = text.match(/energy spend by [€$]([0-9,]+)/);
+    if (savingsMatch) {
+      extractedData.totalCostSavings = parseFloat(savingsMatch[1].replace(/,/g, ''));
+      console.log(`Found total cost savings: €${extractedData.totalCostSavings}`);
+    }
+    
+    return extractedData;
+  } catch (error) {
+    console.error(`Error in fallback extraction for ${fileName}:`, error);
+    
+    // Return a minimal data structure to prevent further errors
+    return {
+      organizationName: fileName.replace(".pdf", ""),
+      totalCostSavings: 0,
+      totalEmissionsSaved: 0,
+      totalEnergySavings: 0,
+      energyData: [],
+      recommendedActions: []
+    };
   }
 }
 
@@ -263,6 +338,42 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.error('Error in upload endpoint:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Test upload endpoint - just for testing file uploads without PDF processing
+app.post('/api/test-upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.json({ 
+        status: 'error', 
+        message: 'No file uploaded' 
+      });
+    }
+    
+    // Just acknowledge receipt of the file without processing
+    res.json({
+      status: 'success',
+      message: 'File received successfully',
+      file: {
+        name: req.file.originalname,
+        size: req.file.size,
+        path: req.file.path,
+        mimetype: req.file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('Error in test upload:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message 
+    });
+  }
+});
+
+app.get('/api/dashboard', (req, res) => {
+  console.log("Dashboard endpoint called");
+  console.log(`Returning data with ${dashboardData.reports.length} reports`);
+  res.json(dashboardData);
 });
 
 app.get('/api/reports', (req, res) => {
