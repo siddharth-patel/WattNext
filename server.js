@@ -43,11 +43,115 @@ let dashboardData = {
   totalAudits: 0,
   totalEmissionsSaved: 0,
   totalEuroSaved: 0,
+  auditConversion: 0,
+  totalGrants: 0,
   organizations: [],
   energyData: [],
   recommendedActions: [],
-  reports: []
+  reports: [],
+  applicationStatus: {
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    rejected: 0,
+    total: 0
+  },
+  auditors: []
 };
+
+// Initialize with sample data (only for dev/demo purposes)
+function initializeSampleData() {
+  // Only initialize if no data exists yet
+  if (dashboardData.totalAudits === 0) {
+    dashboardData = {
+      totalAudits: 130,
+      totalEmissionsSaved: 578.45,
+      totalEuroSaved: 425000,
+      auditConversion: 68,
+      totalGrants: 185000,
+      organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital"],
+      energyData: [
+        { type: "Electricity", usage: 250000, cost: 45000, emissions: 120 },
+        { type: "Natural Gas", usage: 320000, cost: 32000, emissions: 180 },
+        { type: "Oil", usage: 150000, cost: 18000, emissions: 90 }
+      ],
+      recommendedActions: [
+        { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2 },
+        { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5 },
+        { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0 },
+        { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8 },
+        { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5 }
+      ],
+      reports: [
+        {
+          fileName: "TechSolutions_Audit_2023.pdf",
+          organizationName: "Tech Solutions Inc.",
+          uploadDate: "2023-10-15T08:30:00.000Z",
+          data: {
+            totalCostSavings: 85000,
+            totalEmissionsSaved: 120.5,
+            emissionsReductionPct: 42
+          }
+        },
+        {
+          fileName: "EcoFriendly_EnergyReport.pdf",
+          organizationName: "EcoFriendly Manufacturing",
+          uploadDate: "2023-11-20T10:45:00.000Z",
+          data: {
+            totalCostSavings: 105000,
+            totalEmissionsSaved: 155.2,
+            emissionsReductionPct: 38
+          }
+        }
+      ],
+      applicationStatus: {
+        pending: 15,
+        inProgress: 28,
+        completed: 45,
+        rejected: 12,
+        total: 100
+      },
+      auditors: [
+        { 
+          name: "Emma Thompson", 
+          role: "Senior Auditor",
+          avatar: "",
+          auditsCompleted: 52, 
+          conversionRate: 68, 
+          avgEnergySavings: 45000, 
+          avgCostSavings: 3200 
+        },
+        { 
+          name: "Michael Chen", 
+          role: "Energy Consultant",
+          avatar: "",
+          auditsCompleted: 38, 
+          conversionRate: 72, 
+          avgEnergySavings: 52000, 
+          avgCostSavings: 4100 
+        },
+        { 
+          name: "Sarah Johnson", 
+          role: "Audit Specialist",
+          avatar: "",
+          auditsCompleted: 47, 
+          conversionRate: 65, 
+          avgEnergySavings: 41000, 
+          avgCostSavings: 3500 
+        },
+        { 
+          name: "David Okoro", 
+          role: "Technical Advisor",
+          avatar: "",
+          auditsCompleted: 35, 
+          conversionRate: 70, 
+          avgEnergySavings: 47000, 
+          avgCostSavings: 3800 
+        }
+      ]
+    };
+  }
+}
 
 // Primary PDF extraction function
 async function extractDataFromPDF(filePath, fileName) {
@@ -67,7 +171,9 @@ async function extractDataFromPDF(filePath, fileName) {
       totalEmissionsSaved: 0,
       totalEnergySavings: 0,
       energyData: [],
-      recommendedActions: []
+      recommendedActions: [],
+      grantAmount: 0, // New field for tracking grants
+      implementationStatus: "pending" // New field for tracking implementation status
     };
     
     // Combine all page content for searching
@@ -99,6 +205,17 @@ async function extractDataFromPDF(filePath, fileName) {
       console.log(`Found total cost savings: €${extractedData.totalCostSavings}`);
     } else {
       console.log("No cost savings found in PDF");
+    }
+    
+    // Extract grant amount (new feature)
+    const grantMatch = allText.match(/grant amount.*?[€$]([0-9,]+)/i);
+    if (grantMatch) {
+      extractedData.grantAmount = parseFloat(grantMatch[1].replace(/,/g, ''));
+      console.log(`Found grant amount: €${extractedData.grantAmount}`);
+    } else {
+      // Generate a random grant amount for demo purposes
+      extractedData.grantAmount = Math.round(extractedData.totalCostSavings * 0.3);
+      console.log(`Generated sample grant amount: €${extractedData.grantAmount}`);
     }
     
     // Find energy consumption data
@@ -185,6 +302,7 @@ async function extractDataFromPDF(filePath, fileName) {
     console.log(`- Total energy savings: ${extractedData.totalEnergySavings} kWh`);
     console.log(`- Total cost savings: €${extractedData.totalCostSavings}`);
     console.log(`- Total emissions saved: ${extractedData.totalEmissionsSaved} tonnes`);
+    console.log(`- Grant amount: €${extractedData.grantAmount}`);
     console.log(`- Energy data entries: ${extractedData.energyData.length}`);
     console.log(`- Recommended actions: ${extractedData.recommendedActions.length}`);
     
@@ -229,6 +347,8 @@ async function extractDataWithFallback(filePath, fileName) {
       totalCostSavings: 0,
       totalEmissionsSaved: 0,
       totalEnergySavings: 0,
+      grantAmount: 0, // New field for grants
+      implementationStatus: "pending", // Implementation status
       energyData: [],
       recommendedActions: []
     };
@@ -254,141 +374,13 @@ async function extractDataWithFallback(filePath, fileName) {
       console.log(`Found total cost savings: €${extractedData.totalCostSavings}`);
     }
     
-    return extractedData;
-  } catch (error) {
-    console.error(`Error in fallback extraction for ${fileName}:`, error);
-    
-    // Return a minimal data structure to prevent further errors
-    return {
-      organizationName: fileName.replace(".pdf", ""),
-      totalCostSavings: 0,
-      totalEmissionsSaved: 0,
-      totalEnergySavings: 0,
-      energyData: [],
-      recommendedActions: []
-    };
-  }
-}
-
-// API Endpoints
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-  console.log("----------------------------");
-  console.log("Upload endpoint called");
-  console.log("----------------------------");
-  
-  try {
-    if (!req.file) {
-      console.log("Error: No file uploaded");
-      return res.status(400).json({ error: 'No file uploaded' });
+    // Extract or generate a grant amount
+    const grantMatch = text.match(/grant amount.*?[€$]([0-9,]+)/i);
+    if (grantMatch) {
+      extractedData.grantAmount = parseFloat(grantMatch[1].replace(/,/g, ''));
+      console.log(`Found grant amount: €${extractedData.grantAmount}`);
+    } else {
+      // For demo purposes, estimate grant as 30% of cost savings
+      extractedData.grantAmount = Math.round((extractedData.totalCostSavings || 0) * 0.3);
+      console.log(`Generated sample grant amount: €${extractedData.grantAmount}`);
     }
-    
-    console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
-    console.log(`Saved to: ${req.file.path}`);
-    
-    try {
-      const extractedData = await extractDataWithFallback(req.file.path, req.file.originalname);
-      
-      if (!extractedData) {
-        console.log("Failed to extract data from PDF");
-        return res.status(400).json({ error: 'Failed to extract data from PDF' });
-      }
-      
-      // Update dashboard data
-      dashboardData.totalAudits += 1;
-      dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
-      dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
-      
-      if (!dashboardData.organizations.includes(extractedData.organizationName)) {
-        dashboardData.organizations.push(extractedData.organizationName);
-      }
-      
-      dashboardData.energyData = dashboardData.energyData.concat(
-        extractedData.energyData.map(item => ({
-          ...item,
-          organization: extractedData.organizationName
-        }))
-      );
-      
-      dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
-        extractedData.recommendedActions.map(item => ({
-          ...item,
-          organization: extractedData.organizationName
-        }))
-      );
-      
-      dashboardData.reports.push({
-        fileName: req.file.originalname,
-        organizationName: extractedData.organizationName,
-        uploadDate: new Date().toISOString(),
-        data: extractedData
-      });
-      
-      console.log("Successfully processed file and updated dashboard data");
-      
-      res.json({
-        success: true,
-        extractedData,
-        dashboardData
-      });
-    } catch (extractionError) {
-      console.error("Error during PDF extraction:", extractionError);
-      return res.status(500).json({ error: `Error extracting data: ${extractionError.message}` });
-    }
-  } catch (error) {
-    console.error('Error in upload endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Test upload endpoint - just for testing file uploads without PDF processing
-app.post('/api/test-upload', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.json({ 
-        status: 'error', 
-        message: 'No file uploaded' 
-      });
-    }
-    
-    // Just acknowledge receipt of the file without processing
-    res.json({
-      status: 'success',
-      message: 'File received successfully',
-      file: {
-        name: req.file.originalname,
-        size: req.file.size,
-        path: req.file.path,
-        mimetype: req.file.mimetype
-      }
-    });
-  } catch (error) {
-    console.error('Error in test upload:', error);
-    res.status(500).json({ 
-      status: 'error', 
-      message: error.message 
-    });
-  }
-});
-
-app.get('/api/dashboard', (req, res) => {
-  console.log("Dashboard endpoint called");
-  console.log(`Returning data with ${dashboardData.reports.length} reports`);
-  res.json(dashboardData);
-});
-
-app.get('/api/reports', (req, res) => {
-  console.log("Reports endpoint called");
-  console.log(`Returning ${dashboardData.reports.length} reports`);
-  res.json(dashboardData.reports);
-});
-
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-  });
-}
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});

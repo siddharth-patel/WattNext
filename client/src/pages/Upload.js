@@ -5,6 +5,7 @@ import {
   Heading,
   FormControl,
   FormLabel,
+  Input,
   Button,
   Text,
   VStack,
@@ -17,7 +18,17 @@ import {
   AlertDescription,
   Flex,
   Icon,
-  Divider
+  Divider,
+  SimpleGrid,
+  Radio,
+  RadioGroup,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Select,
+  Checkbox
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { FiUpload, FiFile, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
@@ -28,6 +39,14 @@ export default function Upload({ updateDashboard }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [extractedData, setExtractedData] = useState(null);
   const [error, setError] = useState(null);
+  const [additionalDetails, setAdditionalDetails] = useState({
+    grantAmount: 0,
+    implementationStatus: 'pending',
+    auditorName: '',
+    auditorEmail: '',
+    buildingType: 'commercial',
+    notes: ''
+  });
   
   const toast = useToast();
   const navigate = useNavigate();
@@ -54,6 +73,28 @@ export default function Upload({ updateDashboard }) {
       setSelectedFile(null);
       setError('Please drop a valid PDF file');
     }
+  };
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setAdditionalDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleNumberInputChange = (name, value) => {
+    setAdditionalDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleStatusChange = (value) => {
+    setAdditionalDetails(prev => ({
+      ...prev,
+      implementationStatus: value
+    }));
   };
   
   const handleDragOver = (e) => {
@@ -90,6 +131,11 @@ export default function Upload({ updateDashboard }) {
       const formData = new FormData();
       formData.append('file', selectedFile);
       
+      // Add additional details to the form data
+      Object.keys(additionalDetails).forEach(key => {
+        formData.append(key, additionalDetails[key]);
+      });
+      
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -103,7 +149,14 @@ export default function Upload({ updateDashboard }) {
       }
       
       const data = await response.json();
-      setExtractedData(data.extractedData);
+      
+      // Merge any additional details with the extracted data
+      const enhancedData = {
+        ...data.extractedData,
+        ...additionalDetails
+      };
+      
+      setExtractedData(enhancedData);
       updateDashboard(data.dashboardData);
       
       toast({
@@ -178,6 +231,81 @@ export default function Upload({ updateDashboard }) {
           )}
         </Box>
         
+        {selectedFile && !extractedData && (
+          <Box>
+            <Heading size="md" mb={4}>Additional Details</Heading>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <FormControl>
+                <FormLabel>Auditor Name</FormLabel>
+                <Select 
+                  name="auditorName" 
+                  value={additionalDetails.auditorName}
+                  onChange={handleInputChange}
+                  placeholder="Select auditor"
+                >
+                  <option value="Emma Thompson">Emma Thompson</option>
+                  <option value="Michael Chen">Michael Chen</option>
+                  <option value="Sarah Johnson">Sarah Johnson</option>
+                  <option value="David Okoro">David Okoro</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Building Type</FormLabel>
+                <Select 
+                  name="buildingType" 
+                  value={additionalDetails.buildingType}
+                  onChange={handleInputChange}
+                >
+                  <option value="commercial">Commercial</option>
+                  <option value="residential">Residential</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="public">Public Building</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Grant Amount (€)</FormLabel>
+                <NumberInput 
+                  min={0} 
+                  value={additionalDetails.grantAmount}
+                  onChange={(value) => handleNumberInputChange('grantAmount', value)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Implementation Status</FormLabel>
+                <RadioGroup 
+                  onChange={handleStatusChange} 
+                  value={additionalDetails.implementationStatus}
+                >
+                  <HStack spacing={4}>
+                    <Radio value="pending">Pending</Radio>
+                    <Radio value="in-progress">In Progress</Radio>
+                    <Radio value="implemented">Implemented</Radio>
+                  </HStack>
+                </RadioGroup>
+              </FormControl>
+              
+              <FormControl gridColumn={{ md: 'span 2' }}>
+                <FormLabel>Notes</FormLabel>
+                <Input 
+                  name="notes" 
+                  value={additionalDetails.notes}
+                  onChange={handleInputChange}
+                  placeholder="Any additional notes about this audit"
+                />
+              </FormControl>
+            </SimpleGrid>
+          </Box>
+        )}
+        
         {isUploading && (
           <Box>
             <Text mb={2}>Uploading and processing...</Text>
@@ -185,20 +313,22 @@ export default function Upload({ updateDashboard }) {
           </Box>
         )}
         
-        <HStack spacing={4}>
-          <Button
-            colorScheme="purple"
-            onClick={handleUpload}
-            isLoading={isUploading}
-            loadingText="Uploading"
-            isDisabled={!selectedFile || isUploading}
-          >
-            Upload and Process
-          </Button>
-          <Button variant="outline" onClick={() => setSelectedFile(null)} isDisabled={!selectedFile || isUploading}>
-            Cancel
-          </Button>
-        </HStack>
+        {!extractedData && (
+          <HStack spacing={4}>
+            <Button
+              colorScheme="purple"
+              onClick={handleUpload}
+              isLoading={isUploading}
+              loadingText="Uploading"
+              isDisabled={!selectedFile || isUploading}
+            >
+              Upload and Process
+            </Button>
+            <Button variant="outline" onClick={() => setSelectedFile(null)} isDisabled={!selectedFile || isUploading}>
+              Cancel
+            </Button>
+          </HStack>
+        )}
         
         {extractedData && (
           <Box mt={6} p={6} borderWidth={1} borderRadius="md" bg="white">
@@ -210,14 +340,35 @@ export default function Upload({ updateDashboard }) {
                 <Text>{extractedData.organizationName}</Text>
               </Box>
               
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                <Box>
+                  <Text fontWeight="bold">Total Cost Savings:</Text>
+                  <Text>€{(extractedData.totalCostSavings || 0).toLocaleString()}</Text>
+                </Box>
+                
+                <Box>
+                  <Text fontWeight="bold">Total Emissions Saved:</Text>
+                  <Text>{(extractedData.totalEmissionsSaved || 0).toFixed(2)} tonnes CO₂e</Text>
+                </Box>
+                
+                <Box>
+                  <Text fontWeight="bold">Grant Amount:</Text>
+                  <Text>€{(extractedData.grantAmount || 0).toLocaleString()}</Text>
+                </Box>
+              </SimpleGrid>
+              
               <Box>
-                <Text fontWeight="bold">Total Cost Savings:</Text>
-                <Text>€{(extractedData.totalCostSavings || 0).toLocaleString()}</Text>
+                <Text fontWeight="bold">Implementation Status:</Text>
+                <Text>{
+                  extractedData.implementationStatus === 'pending' ? 'Pending' : 
+                  extractedData.implementationStatus === 'in-progress' ? 'In Progress' : 
+                  'Implemented'
+                }</Text>
               </Box>
               
               <Box>
-                <Text fontWeight="bold">Total Emissions Saved:</Text>
-                <Text>{(extractedData.totalEmissionsSaved || 0).toFixed(2)} tonnes CO₂e</Text>
+                <Text fontWeight="bold">Auditor:</Text>
+                <Text>{extractedData.auditorName || 'Not specified'}</Text>
               </Box>
               
               {extractedData.energyData && extractedData.energyData.length > 0 && (
@@ -242,6 +393,13 @@ export default function Upload({ updateDashboard }) {
                       <Text>Emissions Reduction: {action.emissionsReduction.toFixed(2)} tonnes CO₂e</Text>
                     </Box>
                   ))}
+                </Box>
+              )}
+              
+              {extractedData.notes && (
+                <Box>
+                  <Text fontWeight="bold">Notes:</Text>
+                  <Text>{extractedData.notes}</Text>
                 </Box>
               )}
             </VStack>

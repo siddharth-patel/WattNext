@@ -75,10 +75,20 @@ function App() {
     totalAudits: 0,
     totalEmissionsSaved: 0,
     totalEuroSaved: 0,
+    auditConversion: 0,
+    totalGrants: 0,
     organizations: [],
     energyData: [],
     recommendedActions: [],
-    reports: []
+    reports: [],
+    applicationStatus: {
+      pending: 0,
+      inProgress: 0,
+      completed: 0,
+      rejected: 0,
+      total: 0
+    },
+    auditors: []
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -95,41 +105,91 @@ function App() {
       setDashboardData(data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateDashboardData = (newData) => {
-    setDashboardData(newData);
-  };
-
-  return (
-    <ChakraProvider theme={theme}>
-      <Router>
-        <Header />
-        <Routes>
-          <Route 
-            path="/" 
-            element={<Dashboard data={dashboardData} isLoading={isLoading} />} 
-          />
-          <Route 
-            path="/upload" 
-            element={<Upload updateDashboard={updateDashboardData} />} 
-          />
-          <Route 
-            path="/reports" 
-            element={<Reports reports={dashboardData.reports} isLoading={isLoading} />} 
-          />
-          {/* Add this new route for test uploads */}
-          <Route 
-            path="/test-upload" 
-            element={<TestUpload />} 
-          />
-        </Routes>
-      </Router>
-    </ChakraProvider>
-  );
-}
-
-export default App;
+      // If API fails, set some default data for demonstration
+      setDashboardData({
+        totalAudits: 130,
+        totalEmissionsSaved: 578.45,
+        totalEuroSaved: 425000,
+        auditConversion: 68,
+        totalGrants: 185000,
+        organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital"],
+        energyData: [
+          { type: "Electricity", usage: 250000, cost: 45000, emissions: 120 },
+          { type: "Natural Gas", usage: 320000, cost: 32000, emissions: 180 },
+          { type: "Oil", usage: 150000, cost: 18000, emissions: 90 }
+        ],
+        recommendedActions: [
+          { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2 },
+          { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5 },
+          { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0 },
+          { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8 },
+          { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5 }
+        ],
+        reports: [
+          {
+            fileName: "TechSolutions_Audit_2023.pdf",
+            organizationName: "Tech Solutions Inc.",
+            uploadDate: "2023-10-15T08:30:00.000Z",
+            data: {
+              totalCostSavings: 85000,
+              totalEmissionsSaved: 120.5,
+              emissionsReductionPct: 42
+            }
+          },
+          {
+            fileName: "EcoFriendly_EnergyReport.pdf",
+            organizationName: "EcoFriendly Manufacturing",
+            uploadDate: "2023-11-20T10:45:00.000Z",
+            data: {
+              totalCostSavings: 105000,
+              totalEmissionsSaved: 155.2,
+              emissionsReductionPct: 38
+            }
+          }
+        ],
+        applicationStatus: {
+          pending: 15,
+          inProgress: 28,
+          completed: 45,
+          rejected: 12,
+          total: 100
+        },
+        auditors: [
+          { 
+            name: "Emma Thompson", 
+            role: "Senior Auditor",
+            avatar: "",
+            auditsCompleted: 52, 
+            conversionRate: 68, 
+            avgEnergySavings: 45000, 
+            avgCostSavings: 3200 
+          },
+          { 
+            name: "Michael Chen", 
+            role: "Energy Consultant",
+            avatar: "",
+            auditsCompleted: 38, 
+            conversionRate: 72, 
+            avgEnergySavings: 52000, 
+            avgCostSavings: 4100 
+          },
+          { 
+            name: "Sarah Johnson", 
+            role: "Audit Specialist",
+            avatar: "",
+            auditsCompleted: 47, 
+            conversionRate: 65, 
+            avgEnergySavings: 41000, 
+            avgCostSavings: 3500 
+          },
+          { 
+            name: "David Okoro", 
+            role: "Technical Advisor",
+            avatar: "",
+            auditsCompleted: 35, 
+            conversionRate: 70, 
+            avgEnergySavings: 47000, 
+            avgCostSavings: 3800 
+          }
+        ]
+      });

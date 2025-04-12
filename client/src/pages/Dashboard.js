@@ -21,7 +21,13 @@ import {
   Spinner,
   Center,
   Alert,
-  AlertIcon
+  AlertIcon,
+  HStack,
+  Progress,
+  CircularProgress,
+  CircularProgressLabel,
+  Divider,
+  Avatar
 } from '@chakra-ui/react';
 import { 
   BarChart, 
@@ -36,7 +42,9 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  AreaChart,
+  Area
 } from 'recharts';
 
 const StatCard = ({ label, value, helpText, color }) => (
@@ -53,6 +61,37 @@ const SectionHeading = ({ children }) => (
   <Heading size="md" mb={4} color="seai.primary">
     {children}
   </Heading>
+);
+
+const AuditorCard = ({ auditor }) => (
+  <Box p={4} shadow="sm" borderWidth="1px" bg="white" borderRadius="lg">
+    <Flex>
+      <Avatar name={auditor.name} src={auditor.avatar} size="md" mr={3} />
+      <Box>
+        <Text fontWeight="bold">{auditor.name}</Text>
+        <Text fontSize="sm" color="gray.500">{auditor.role}</Text>
+      </Box>
+    </Flex>
+    <Divider my={3} />
+    <SimpleGrid columns={2} spacing={2} mt={2}>
+      <Box>
+        <Text fontSize="xs" color="gray.500">Audits Completed</Text>
+        <Text fontWeight="bold">{auditor.auditsCompleted}</Text>
+      </Box>
+      <Box>
+        <Text fontSize="xs" color="gray.500">Conversion Rate</Text>
+        <Text fontWeight="bold">{auditor.conversionRate}%</Text>
+      </Box>
+      <Box>
+        <Text fontSize="xs" color="gray.500">Avg. Energy Savings</Text>
+        <Text fontWeight="bold">{auditor.avgEnergySavings} kWh</Text>
+      </Box>
+      <Box>
+        <Text fontSize="xs" color="gray.500">Avg. Cost Savings</Text>
+        <Text fontWeight="bold">€{auditor.avgCostSavings}</Text>
+      </Box>
+    </SimpleGrid>
+  </Box>
 );
 
 export default function Dashboard({ data, isLoading }) {
@@ -138,10 +177,77 @@ export default function Dashboard({ data, isLoading }) {
     ];
   }, []);
   
+  // Application status data
+  const applicationStatus = React.useMemo(() => {
+    return {
+      pending: data.applicationStatus?.pending || 15,
+      inProgress: data.applicationStatus?.inProgress || 28,
+      completed: data.applicationStatus?.completed || 45,
+      rejected: data.applicationStatus?.rejected || 12,
+      total: data.applicationStatus?.total || 100
+    };
+  }, [data.applicationStatus]);
+  
+  // Energy consumption breakdown data
+  const energyConsumptionBreakdown = React.useMemo(() => {
+    return [
+      { month: 'Jan', residential: 120, commercial: 230, industrial: 450 },
+      { month: 'Feb', residential: 130, commercial: 240, industrial: 430 },
+      { month: 'Mar', residential: 140, commercial: 250, industrial: 410 },
+      { month: 'Apr', residential: 150, commercial: 260, industrial: 420 },
+      { month: 'May', residential: 160, commercial: 270, industrial: 400 },
+      { month: 'Jun', residential: 170, commercial: 280, industrial: 390 }
+    ];
+  }, []);
+  
+  // Auditor performance data
+  const auditorPerformance = React.useMemo(() => {
+    return data.auditors || [
+      { 
+        name: "Emma Thompson", 
+        role: "Senior Auditor",
+        avatar: "",
+        auditsCompleted: 52, 
+        conversionRate: 68, 
+        avgEnergySavings: 45000, 
+        avgCostSavings: 3200 
+      },
+      { 
+        name: "Michael Chen", 
+        role: "Energy Consultant",
+        avatar: "",
+        auditsCompleted: 38, 
+        conversionRate: 72, 
+        avgEnergySavings: 52000, 
+        avgCostSavings: 4100 
+      },
+      { 
+        name: "Sarah Johnson", 
+        role: "Audit Specialist",
+        avatar: "",
+        auditsCompleted: 47, 
+        conversionRate: 65, 
+        avgEnergySavings: 41000, 
+        avgCostSavings: 3500 
+      },
+      { 
+        name: "David Okoro", 
+        role: "Technical Advisor",
+        avatar: "",
+        auditsCompleted: 35, 
+        conversionRate: 70, 
+        avgEnergySavings: 47000, 
+        avgCostSavings: 3800 
+      }
+    ];
+  }, [data.auditors]);
+  
   // Calculate totals and averages
   const metrics = React.useMemo(() => {
     let avgSavingsPerAudit = 0;
     let avgEmissionsPerAudit = 0;
+    let auditConversion = data.auditConversion || 68; // Default value if not provided
+    let totalGrants = data.totalGrants || 185000; // Default value if not provided
     
     if (data.totalAudits > 0) {
       avgSavingsPerAudit = data.totalEuroSaved / data.totalAudits;
@@ -150,9 +256,11 @@ export default function Dashboard({ data, isLoading }) {
     
     return {
       avgSavingsPerAudit,
-      avgEmissionsPerAudit
+      avgEmissionsPerAudit,
+      auditConversion,
+      totalGrants
     };
-  }, [data.totalAudits, data.totalEuroSaved, data.totalEmissionsSaved]);
+  }, [data.totalAudits, data.totalEuroSaved, data.totalEmissionsSaved, data.auditConversion, data.totalGrants]);
   
   const COLORS = ['#3a1e6d', '#00813a', '#46A09A', '#cb6a15', '#6e1560', '#9B2C2C'];
 
@@ -172,7 +280,7 @@ export default function Dashboard({ data, isLoading }) {
       <Heading mb={6}>WattNext Energy Audit Dashboard</Heading>
       
       {/* Summary Stats */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
+      <SimpleGrid columns={{ base: 1, md: 5 }} spacing={4} mb={8}>
         <StatCard 
           label="Total Audits" 
           value={data.totalAudits} 
@@ -189,6 +297,18 @@ export default function Dashboard({ data, isLoading }) {
           value={`€${(data.totalEuroSaved || 0).toLocaleString()}`} 
           color="seai.accent" 
         />
+        <StatCard 
+          label="Audit Conversion" 
+          value={`${metrics.auditConversion}%`} 
+          helpText="Implementation rate"
+          color="#6e1560" 
+        />
+        <StatCard 
+          label="Total Grants" 
+          value={`€${metrics.totalGrants.toLocaleString()}`} 
+          helpText="Government funding"
+          color="#cb6a15" 
+        />
       </SimpleGrid>
       
       {/* No Data Alert */}
@@ -198,6 +318,79 @@ export default function Dashboard({ data, isLoading }) {
           <Text>No audit reports have been uploaded yet. Upload some reports to see visualizations and insights.</Text>
         </Alert>
       )}
+      
+      {/* Application Status */}
+      <Box mb={8}>
+        <SectionHeading>Application Status</SectionHeading>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg">
+            <Heading size="sm" mb={4}>Status Distribution</Heading>
+            <HStack spacing={4} mb={4} justify="space-around">
+              <Box textAlign="center">
+                <CircularProgress value={applicationStatus.pending / applicationStatus.total * 100} color="orange.400" size="80px">
+                  <CircularProgressLabel>{applicationStatus.pending}</CircularProgressLabel>
+                </CircularProgress>
+                <Text mt={2} fontSize="sm">Pending</Text>
+              </Box>
+              <Box textAlign="center">
+                <CircularProgress value={applicationStatus.inProgress / applicationStatus.total * 100} color="blue.400" size="80px">
+                  <CircularProgressLabel>{applicationStatus.inProgress}</CircularProgressLabel>
+                </CircularProgress>
+                <Text mt={2} fontSize="sm">In Progress</Text>
+              </Box>
+              <Box textAlign="center">
+                <CircularProgress value={applicationStatus.completed / applicationStatus.total * 100} color="green.400" size="80px">
+                  <CircularProgressLabel>{applicationStatus.completed}</CircularProgressLabel>
+                </CircularProgress>
+                <Text mt={2} fontSize="sm">Completed</Text>
+              </Box>
+              <Box textAlign="center">
+                <CircularProgress value={applicationStatus.rejected / applicationStatus.total * 100} color="red.400" size="80px">
+                  <CircularProgressLabel>{applicationStatus.rejected}</CircularProgressLabel>
+                </CircularProgress>
+                <Text mt={2} fontSize="sm">Rejected</Text>
+              </Box>
+            </HStack>
+            <Text fontSize="sm" color="gray.500" textAlign="center">
+              Total Applications: {applicationStatus.total}
+            </Text>
+          </Box>
+          
+          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg">
+            <Heading size="sm" mb={4}>Completion Rate</Heading>
+            <Box mb={4}>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm">Pending Review</Text>
+                <Text fontSize="sm" fontWeight="bold">{applicationStatus.pending}%</Text>
+              </Flex>
+              <Progress value={applicationStatus.pending} size="sm" colorScheme="orange" borderRadius="md" mb={2} />
+              
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm">In Progress</Text>
+                <Text fontSize="sm" fontWeight="bold">{applicationStatus.inProgress}%</Text>
+              </Flex>
+              <Progress value={applicationStatus.inProgress} size="sm" colorScheme="blue" borderRadius="md" mb={2} />
+              
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm">Completed</Text>
+                <Text fontSize="sm" fontWeight="bold">{applicationStatus.completed}%</Text>
+              </Flex>
+              <Progress value={applicationStatus.completed} size="sm" colorScheme="green" borderRadius="md" mb={2} />
+              
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm">Rejected</Text>
+                <Text fontSize="sm" fontWeight="bold">{applicationStatus.rejected}%</Text>
+              </Flex>
+              <Progress value={applicationStatus.rejected} size="sm" colorScheme="red" borderRadius="md" />
+            </Box>
+            <Divider my={4} />
+            <Flex justify="space-between">
+              <Text fontSize="sm">Overall Completion</Text>
+              <Badge colorScheme="green" fontSize="sm">{applicationStatus.completed}%</Badge>
+            </Flex>
+          </Box>
+        </SimpleGrid>
+      </Box>
       
       {/* Energy Usage Breakdown */}
       <Box mb={8}>
@@ -264,6 +457,34 @@ export default function Dashboard({ data, isLoading }) {
             )}
           </Box>
         </SimpleGrid>
+      </Box>
+      
+      {/* Energy Consumption Breakdown */}
+      <Box mb={8}>
+        <SectionHeading>Energy Consumption Breakdown</SectionHeading>
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
+          <Heading size="sm" mb={4}>Consumption by Sector</Heading>
+          <ResponsiveContainer width="100%" height="85%">
+            <AreaChart
+              data={energyConsumptionBreakdown}
+              margin={{
+                top: 10,
+                right: 30,
+                left: 0,
+                bottom: 0,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Area type="monotone" dataKey="residential" stackId="1" stroke="#3a1e6d" fill="#3a1e6d" />
+              <Area type="monotone" dataKey="commercial" stackId="1" stroke="#00813a" fill="#00813a" />
+              <Area type="monotone" dataKey="industrial" stackId="1" stroke="#cb6a15" fill="#cb6a15" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Box>
       </Box>
       
       {/* Monthly Energy Trends */}
@@ -344,6 +565,16 @@ export default function Dashboard({ data, isLoading }) {
             </TableContainer>
           )}
         </Box>
+      </Box>
+      
+      {/* Auditor Performance */}
+      <Box mb={8}>
+        <SectionHeading>Auditor Performance</SectionHeading>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
+          {auditorPerformance.map((auditor, index) => (
+            <AuditorCard key={index} auditor={auditor} />
+          ))}
+        </SimpleGrid>
       </Box>
       
       {/* Organizations */}
