@@ -491,12 +491,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       dashboardData.applicationStatus.completed += 1;
       
       // Calculate and update audit conversion rate
-      const conversionReports = dashboardData.reports.filter(r => 
-        r.data && r.data.implementationStatus === 'implemented'
-      );
-      
-      if (dashboardData.reports.length > 0) {
+      let conversionReports = [];
+      if (dashboardData.reports && dashboardData.reports.length > 0) {
+        conversionReports = dashboardData.reports.filter(function(r) {
+          return r.data && r.data.implementationStatus === 'implemented';
+        });
         dashboardData.auditConversion = Math.round((conversionReports.length / dashboardData.reports.length) * 100);
+      } else {
+        dashboardData.auditConversion = 0;
       }
       
       // Add the new report
