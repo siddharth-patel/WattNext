@@ -43,7 +43,7 @@ export default function Header() {
   const links = [
     { name: 'Dashboard', path: '/' },
     { name: 'Upload Reports', path: '/upload' },
-    { name: 'View Reports', path: '/reports' }
+    { name: 'View Reports', path: '/reports' },
     { name: 'Test Upload', path: '/test-upload' }
   ];
 
