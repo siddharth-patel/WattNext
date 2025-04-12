@@ -44,6 +44,7 @@ export default function Header() {
     { name: 'Dashboard', path: '/' },
     { name: 'Upload Reports', path: '/upload' },
     { name: 'View Reports', path: '/reports' }
+    { name: 'Test Upload', path: '/test-upload' }
   ];
 
   return (

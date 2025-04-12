@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { PDFExtract } = require('pdf.js-extract');
 const pdfExtract = new PDFExtract();
+const pdfParse = require('pdf-parse');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -49,17 +50,23 @@ let dashboardData = {
 };
 
 // Extract data from PDF
-async function extractDataFromPDF(filePath, fileName) {
+// Then add this fallback function:
+async function extractDataWithFallback(filePath, fileName) {
   try {
-    // Log when extraction starts
-    console.log(`Starting PDF extraction for ${fileName}`);
+    // Try the primary method first
+    const result = await extractDataFromPDF(filePath, fileName);
+    if (result) return result;
     
-    const data = await pdfExtract.extract(filePath);
+    // If primary method fails, try the fallback
+    console.log("Primary extraction failed, trying fallback method...");
+    const dataBuffer = fs.readFileSync(filePath);
+    const pdfData = await pdfParse(dataBuffer);
     
-    // Log after successful extraction
-    console.log(`Successfully extracted ${data.pages.length} pages from PDF ${fileName}`);
+    // Process the text content from pdf-parse
+    const text = pdfData.text;
+    console.log(`Extracted ${text.length} characters of text using fallback method`);
     
-    // Initialize extracted data
+    // Do basic extraction with the fallback text
     let extractedData = {
       organizationName: "Unknown",
       totalCostSavings: 0,
@@ -69,17 +76,11 @@ async function extractDataFromPDF(filePath, fileName) {
       recommendedActions: []
     };
     
-    // Combine all page content for searching
-    const allText = data.pages.map(page => page.content.map(item => item.str).join(' ')).join(' ');
-    console.log(`Combined text length: ${allText.length} characters`);
-    
     // Extract organization name
-    const orgMatch = allText.match(/For:\s*([^\n]+)/);
+    const orgMatch = text.match(/For:\s*([^\n]+)/);
     if (orgMatch) {
       extractedData.organizationName = orgMatch[1].trim();
       console.log(`Found organization name: ${extractedData.organizationName}`);
-    } else {
-      console.log("No organization name found in PDF");
     }
     
     // Extract emissions reduction
@@ -189,8 +190,7 @@ async function extractDataFromPDF(filePath, fileName) {
     
     return extractedData;
   } catch (error) {
-    console.error(`ERROR processing ${fileName}:`, error);
-    console.error(`Error stack: ${error.stack}`);
+    console.error(`Error in fallback extraction for ${fileName}:`, error);
     return null;
   }
 }
@@ -200,67 +200,69 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   console.log("----------------------------");
   console.log("Upload endpoint called");
   console.log("----------------------------");
+  
   try {
     if (!req.file) {
+      console.log("Error: No file uploaded");
       return res.status(400).json({ error: 'No file uploaded' });
     }
+    
     console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
     console.log(`Saved to: ${req.file.path}`);
-
-    const filePath = req.file.path;
-    const fileName = req.file.originalname;
     
-    const extractedData = await extractDataFromPDF(filePath, fileName);
-    
-    if (!extractedData) {
-      return res.status(400).json({ error: 'Failed to extract data from PDF' });
+    try {
+      const extractedData = await extractDataWithFallback(req.file.path, req.file.originalname);
+      
+      if (!extractedData) {
+        console.log("Failed to extract data from PDF");
+        return res.status(400).json({ error: 'Failed to extract data from PDF' });
+      }
+      
+      // Update dashboard data
+      dashboardData.totalAudits += 1;
+      dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
+      dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
+      
+      if (!dashboardData.organizations.includes(extractedData.organizationName)) {
+        dashboardData.organizations.push(extractedData.organizationName);
+      }
+      
+      dashboardData.energyData = dashboardData.energyData.concat(
+        extractedData.energyData.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
+        extractedData.recommendedActions.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      dashboardData.reports.push({
+        fileName: req.file.originalname,
+        organizationName: extractedData.organizationName,
+        uploadDate: new Date().toISOString(),
+        data: extractedData
+      });
+      
+      console.log("Successfully processed file and updated dashboard data");
+      
+      res.json({
+        success: true,
+        extractedData,
+        dashboardData
+      });
+    } catch (extractionError) {
+      console.error("Error during PDF extraction:", extractionError);
+      return res.status(500).json({ error: `Error extracting data: ${extractionError.message}` });
     }
-    
-    // Update dashboard data
-    dashboardData.totalAudits += 1;
-    dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
-    dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
-    
-    if (!dashboardData.organizations.includes(extractedData.organizationName)) {
-      dashboardData.organizations.push(extractedData.organizationName);
-    }
-    
-    dashboardData.energyData = dashboardData.energyData.concat(
-      extractedData.energyData.map(item => ({
-        ...item,
-        organization: extractedData.organizationName
-      }))
-    );
-    
-    dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
-      extractedData.recommendedActions.map(item => ({
-        ...item,
-        organization: extractedData.organizationName
-      }))
-    );
-    
-    dashboardData.reports.push({
-      fileName,
-      organizationName: extractedData.organizationName,
-      uploadDate: new Date().toISOString(),
-      data: extractedData
-    });
-    
-    res.json({
-      success: true,
-      extractedData,
-      dashboardData
-    });
   } catch (error) {
     console.error('Error in upload endpoint:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
-
-app.get('/api/dashboard', (req, res) => {
-  console.log("Dashboard endpoint called");
-  console.log(`Returning data with ${dashboardData.reports.length} reports`);
-  res.json(dashboardData);
 });
 
 app.get('/api/reports', (req, res) => {
