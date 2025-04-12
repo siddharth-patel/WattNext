@@ -533,31 +533,32 @@ export default function Dashboard({ data, isLoading }) {
             )}
           </Box>
           
-          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="380px">
             <Heading size="sm" mb={4}>Recommended Action Types</Heading>
             {recommendedActionTypes.every(item => item.energySavings === 0) ? (
               <Flex justify="center" align="center" h="80%">
                 <Text color="gray.500">No recommendation data available. Upload reports to see actions.</Text>
               </Flex>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="85%">
                 <BarChart
                   data={recommendedActionTypes}
                   margin={{
                     top: 5,
                     right: 30,
                     left: 20,
-                    bottom: 5,
+                    bottom: 30,
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
+                  <XAxis height={50}
                     dataKey="name" 
                     tick={{ fontSize: 10 }} 
                     tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value} 
                   />
                   <YAxis />
                   <Tooltip />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
                   <Bar dataKey="energySavings" name="Energy Savings (kWh)" fill="#3a1e6d" />
                 </BarChart>
               </ResponsiveContainer>
