@@ -8,7 +8,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import Reports from './pages/Reports';
-import TestUpload from './pages/TestUpload';  // Add this new import
+import TestUpload from './pages/TestUpload'; 
 
 // Custom theme
 const theme = extendTheme({
