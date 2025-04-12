@@ -88,7 +88,9 @@ function App() {
       rejected: 0,
       total: 0
     },
-    auditors: []
+    auditors: [],
+    regions: [],
+    industries: []
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -112,18 +114,24 @@ function App() {
         totalEuroSaved: 425000,
         auditConversion: 68,
         totalGrants: 185000,
-        organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital"],
+        organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital", "Galway University", "Limerick Retail Center"],
         energyData: [
           { type: "Electricity", usage: 250000, cost: 45000, emissions: 120 },
           { type: "Natural Gas", usage: 320000, cost: 32000, emissions: 180 },
           { type: "Oil", usage: 150000, cost: 18000, emissions: 90 }
         ],
         recommendedActions: [
-          { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2 },
-          { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5 },
-          { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0 },
-          { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8 },
-          { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5 }
+          { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2, status: "Implemented" },
+          { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5, status: "In Progress" },
+          { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0, status: "Pending" },
+          { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8, status: "Implemented" },
+          { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5, status: "In Progress" }
+        ],
+        recommendedGrants: [
+          { name: "SEAI Commercial Grant", amount: 45000, status: "Applied" },
+          { name: "Energy Efficiency Fund", amount: 75000, status: "Eligible" },
+          { name: "Green Business Fund", amount: 35000, status: "Recommended" },
+          { name: "Renewable Heat Incentive", amount: 28000, status: "Eligible" }
         ],
         reports: [
           {
@@ -133,7 +141,10 @@ function App() {
             data: {
               totalCostSavings: 85000,
               totalEmissionsSaved: 120.5,
-              emissionsReductionPct: 42
+              emissionsReductionPct: 42,
+              implementationStatus: "implemented",
+              region: "dublin",
+              industry: "technology"
             }
           },
           {
@@ -143,7 +154,36 @@ function App() {
             data: {
               totalCostSavings: 105000,
               totalEmissionsSaved: 155.2,
-              emissionsReductionPct: 38
+              emissionsReductionPct: 38,
+              implementationStatus: "in-progress",
+              region: "cork",
+              industry: "manufacturing"
+            }
+          },
+          {
+            fileName: "DublinCC_Audit.pdf",
+            organizationName: "Dublin City Council",
+            uploadDate: "2023-12-05T14:20:00.000Z",
+            data: {
+              totalCostSavings: 78000,
+              totalEmissionsSaved: 95.5,
+              emissionsReductionPct: 35,
+              implementationStatus: "pending",
+              region: "dublin",
+              industry: "public"
+            }
+          },
+          {
+            fileName: "Hospital_Energy_Report.pdf",
+            organizationName: "Cork Hospital",
+            uploadDate: "2024-01-10T09:15:00.000Z",
+            data: {
+              totalCostSavings: 92000,
+              totalEmissionsSaved: 110.8,
+              emissionsReductionPct: 40,
+              implementationStatus: "implemented",
+              region: "cork",
+              industry: "healthcare"
             }
           }
         ],
@@ -191,7 +231,9 @@ function App() {
             avgEnergySavings: 47000, 
             avgCostSavings: 3800 
           }
-        ]
+        ],
+        regions: ["Dublin", "Cork", "Galway", "Limerick"],
+        industries: ["Manufacturing", "Commercial", "Healthcare", "Education", "Hospitality", "Technology"]
       });
     } finally {
       setIsLoading(false);

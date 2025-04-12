@@ -56,7 +56,10 @@ let dashboardData = {
     rejected: 0,
     total: 0
   },
-  auditors: []
+  auditors: [],
+  regions: [],
+  industries: [],
+  recommendedGrants: []
 };
 
 // Initialize with sample data (only for dev/demo purposes)
@@ -69,18 +72,24 @@ function initializeSampleData() {
       totalEuroSaved: 425000,
       auditConversion: 68,
       totalGrants: 185000,
-      organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital"],
+      organizations: ["Tech Solutions Inc.", "EcoFriendly Manufacturing", "Dublin City Council", "Cork Hospital", "Galway University", "Limerick Retail Center"],
       energyData: [
         { type: "Electricity", usage: 250000, cost: 45000, emissions: 120 },
         { type: "Natural Gas", usage: 320000, cost: 32000, emissions: 180 },
         { type: "Oil", usage: 150000, cost: 18000, emissions: 90 }
       ],
       recommendedActions: [
-        { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2 },
-        { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5 },
-        { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0 },
-        { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8 },
-        { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5 }
+        { name: "Solar PV Installation", energySavings: 75000, costSavings: 12000, emissionsReduction: 35.2, status: "Implemented" },
+        { name: "LED Lighting Upgrade", energySavings: 45000, costSavings: 8500, emissionsReduction: 22.5, status: "In Progress" },
+        { name: "Heat Pump Replacement", energySavings: 62000, costSavings: 9800, emissionsReduction: 31.0, status: "Pending" },
+        { name: "Building Insulation", energySavings: 54000, costSavings: 7200, emissionsReduction: 27.8, status: "Implemented" },
+        { name: "Smart Energy Management", energySavings: 38000, costSavings: 6400, emissionsReduction: 19.5, status: "In Progress" }
+      ],
+      recommendedGrants: [
+        { name: "SEAI Commercial Grant", amount: 45000, status: "Applied" },
+        { name: "Energy Efficiency Fund", amount: 75000, status: "Eligible" },
+        { name: "Green Business Fund", amount: 35000, status: "Recommended" },
+        { name: "Renewable Heat Incentive", amount: 28000, status: "Eligible" }
       ],
       reports: [
         {
@@ -91,7 +100,9 @@ function initializeSampleData() {
             totalCostSavings: 85000,
             totalEmissionsSaved: 120.5,
             emissionsReductionPct: 42,
-            implementationStatus: "implemented"
+            implementationStatus: "implemented",
+            region: "dublin",
+            industry: "technology"
           }
         },
         {
@@ -102,7 +113,35 @@ function initializeSampleData() {
             totalCostSavings: 105000,
             totalEmissionsSaved: 155.2,
             emissionsReductionPct: 38,
-            implementationStatus: "in-progress"
+            implementationStatus: "in-progress",
+            region: "cork",
+            industry: "manufacturing"
+          }
+        },
+        {
+          fileName: "DublinCC_Audit.pdf",
+          organizationName: "Dublin City Council",
+          uploadDate: "2023-12-05T14:20:00.000Z",
+          data: {
+            totalCostSavings: 78000,
+            totalEmissionsSaved: 95.5,
+            emissionsReductionPct: 35,
+            implementationStatus: "pending",
+            region: "dublin",
+            industry: "public"
+          }
+        },
+        {
+          fileName: "Hospital_Energy_Report.pdf",
+          organizationName: "Cork Hospital",
+          uploadDate: "2024-01-10T09:15:00.000Z",
+          data: {
+            totalCostSavings: 92000,
+            totalEmissionsSaved: 110.8,
+            emissionsReductionPct: 40,
+            implementationStatus: "implemented",
+            region: "cork",
+            industry: "healthcare"
           }
         }
       ],
@@ -150,7 +189,9 @@ function initializeSampleData() {
           avgEnergySavings: 47000, 
           avgCostSavings: 3800 
         }
-      ]
+      ],
+      regions: ["Dublin", "Cork", "Galway", "Limerick"],
+      industries: ["Manufacturing", "Commercial", "Healthcare", "Education", "Hospitality", "Technology"]
     };
   }
 }
@@ -175,7 +216,9 @@ async function extractDataFromPDF(filePath, fileName) {
       energyData: [],
       recommendedActions: [],
       grantAmount: 0, // New field for tracking grants
-      implementationStatus: "pending" // New field for tracking implementation status
+      implementationStatus: "pending", // New field for tracking implementation status
+      region: "", // Region field
+      industry: "" // Industry field
     };
     
     // Combine all page content for searching
@@ -218,6 +261,28 @@ async function extractDataFromPDF(filePath, fileName) {
       // Generate a random grant amount for demo purposes
       extractedData.grantAmount = Math.round(extractedData.totalCostSavings * 0.3);
       console.log(`Generated sample grant amount: €${extractedData.grantAmount}`);
+    }
+
+    // Try to extract region and industry
+    if (allText.includes("Dublin") || allText.includes("dublin")) {
+      extractedData.region = "dublin";
+    } else if (allText.includes("Cork") || allText.includes("cork")) {
+      extractedData.region = "cork";
+    } else if (allText.includes("Galway") || allText.includes("galway")) {
+      extractedData.region = "galway";
+    } else if (allText.includes("Limerick") || allText.includes("limerick")) {
+      extractedData.region = "limerick";
+    }
+
+    // Try to determine industry
+    if (allText.includes("manufacturing") || allText.includes("Manufacturing")) {
+      extractedData.industry = "manufacturing";
+    } else if (allText.includes("commercial") || allText.includes("Commercial")) {
+      extractedData.industry = "commercial";
+    } else if (allText.includes("healthcare") || allText.includes("Healthcare") || allText.includes("Hospital")) {
+      extractedData.industry = "healthcare";
+    } else if (allText.includes("education") || allText.includes("Education") || allText.includes("School") || allText.includes("University")) {
+      extractedData.industry = "education";
     }
     
     // Find energy consumption data
@@ -278,11 +343,16 @@ async function extractDataFromPDF(filePath, fileName) {
           const emissionsReduction = parseFloat(match[4].replace(/,/g, ''));
           
           if (energySavings > 0 || costSavings > 0) {
+            // Randomly assign a status for demo purposes
+            const statuses = ["Pending", "In Progress", "Implemented"];
+            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+            
             const action = {
               name: actionName,
               energySavings: energySavings,
               costSavings: costSavings,
-              emissionsReduction: emissionsReduction
+              emissionsReduction: emissionsReduction,
+              status: randomStatus
             };
             
             extractedData.recommendedActions.push(action);
@@ -305,6 +375,8 @@ async function extractDataFromPDF(filePath, fileName) {
     console.log(`- Total cost savings: €${extractedData.totalCostSavings}`);
     console.log(`- Total emissions saved: ${extractedData.totalEmissionsSaved} tonnes`);
     console.log(`- Grant amount: €${extractedData.grantAmount}`);
+    console.log(`- Region: ${extractedData.region}`);
+    console.log(`- Industry: ${extractedData.industry}`);
     console.log(`- Energy data entries: ${extractedData.energyData.length}`);
     console.log(`- Recommended actions: ${extractedData.recommendedActions.length}`);
     
@@ -349,8 +421,10 @@ async function extractDataWithFallback(filePath, fileName) {
       totalCostSavings: 0,
       totalEmissionsSaved: 0,
       totalEnergySavings: 0,
-      grantAmount: 0, // New field for grants
-      implementationStatus: "pending", // Implementation status
+      grantAmount: 0,
+      implementationStatus: "pending",
+      region: "",
+      industry: "",
       energyData: [],
       recommendedActions: []
     };
@@ -387,194 +461,24 @@ async function extractDataWithFallback(filePath, fileName) {
       console.log(`Generated sample grant amount: €${extractedData.grantAmount}`);
     }
     
-    return extractedData;
-  } catch (error) {
-    console.error(`Error in fallback extraction for ${fileName}:`, error);
-    
-    // Return a minimal data structure to prevent further errors
-    return {
-      organizationName: fileName.replace(".pdf", ""),
-      totalCostSavings: 0,
-      totalEmissionsSaved: 0,
-      totalEnergySavings: 0,
-      grantAmount: 0,
-      implementationStatus: "pending",
-      energyData: [],
-      recommendedActions: []
-    };
-  }
-}
-
-// Initialize default data on server start
-initializeSampleData();
-
-// API Endpoints
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-  console.log("----------------------------");
-  console.log("Upload endpoint called");
-  console.log("----------------------------");
-  
-  // Log any additional form fields
-  console.log("Form data received:", req.body);
-  
-  try {
-    if (!req.file) {
-      console.log("Error: No file uploaded");
-      return res.status(400).json({ error: 'No file uploaded' });
+    // Try to extract region and industry based on the organization name or content
+    if (text.includes("Dublin") || text.includes("dublin")) {
+      extractedData.region = "dublin";
+    } else if (text.includes("Cork") || text.includes("cork")) {
+      extractedData.region = "cork";
+    } else if (text.includes("Galway") || text.includes("galway")) {
+      extractedData.region = "galway";
+    } else if (text.includes("Limerick") || text.includes("limerick")) {
+      extractedData.region = "limerick";
     }
-    
-    console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
-    console.log(`Saved to: ${req.file.path}`);
-    
-    try {
-      const extractedData = await extractDataWithFallback(req.file.path, req.file.originalname);
-      
-      if (!extractedData) {
-        console.log("Failed to extract data from PDF");
-        return res.status(400).json({ error: 'Failed to extract data from PDF' });
-      }
-      
-      // Incorporate additional form data into the extracted data
-      if (req.body.grantAmount) {
-        extractedData.grantAmount = parseFloat(req.body.grantAmount);
-      }
-      
-      if (req.body.implementationStatus) {
-        extractedData.implementationStatus = req.body.implementationStatus;
-      }
-      
-      if (req.body.auditorName) {
-        extractedData.auditorName = req.body.auditorName;
-      }
-      
-      if (req.body.buildingType) {
-        extractedData.buildingType = req.body.buildingType;
-      }
-      
-      if (req.body.notes) {
-        extractedData.notes = req.body.notes;
-      }
-      
-      console.log("Enhanced extracted data with form inputs:", extractedData);
-      
-      // Initialize dashboard with sample data if it's the first upload
-      if (dashboardData.totalAudits === 0) {
-        initializeSampleData();
-      }
-      
-      // Update dashboard data
-      dashboardData.totalAudits += 1;
-      dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
-      dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
-      dashboardData.totalGrants += extractedData.grantAmount || 0;
-      
-      if (!dashboardData.organizations.includes(extractedData.organizationName)) {
-        dashboardData.organizations.push(extractedData.organizationName);
-      }
-      
-      dashboardData.energyData = dashboardData.energyData.concat(
-        extractedData.energyData.map(item => ({
-          ...item,
-          organization: extractedData.organizationName
-        }))
-      );
-      
-      dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
-        extractedData.recommendedActions.map(item => ({
-          ...item,
-          organization: extractedData.organizationName
-        }))
-      );
-      
-      // Update application status
-      dashboardData.applicationStatus.total += 1;
-      dashboardData.applicationStatus.completed += 1;
-      
-      // Calculate and update audit conversion rate
-      let conversionReports = [];
-      if (dashboardData.reports && dashboardData.reports.length > 0) {
-        conversionReports = dashboardData.reports.filter(function(r) {
-          return r.data && r.data.implementationStatus === 'implemented';
-        });
-        dashboardData.auditConversion = Math.round((conversionReports.length / dashboardData.reports.length) * 100);
-      } else {
-        dashboardData.auditConversion = 0;
-      }
-      
-      // Add the new report
-      dashboardData.reports.push({
-        fileName: req.file.originalname,
-        organizationName: extractedData.organizationName,
-        uploadDate: new Date().toISOString(),
-        data: extractedData
-      });
-      
-      console.log("Successfully processed file and updated dashboard data");
-      
-      res.json({
-        success: true,
-        extractedData,
-        dashboardData
-      });
-    } catch (extractionError) {
-      console.error("Error during PDF extraction:", extractionError);
-      return res.status(500).json({ error: `Error extracting data: ${extractionError.message}` });
+
+    // Try to determine industry
+    if (text.includes("manufacturing") || text.includes("Manufacturing")) {
+      extractedData.industry = "manufacturing";
+    } else if (text.includes("commercial") || text.includes("Commercial")) {
+      extractedData.industry = "commercial";
+    } else if (text.includes("healthcare") || text.includes("Healthcare") || text.includes("Hospital")) {
+      extractedData.industry = "healthcare";
+    } else if (text.includes("education") || text.includes("Education") || text.includes("School") || text.includes("University")) {
+      extractedData.industry = "education";
     }
-  } catch (error) {
-    console.error('Error in upload endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Test upload endpoint - just for testing file uploads without PDF processing
-app.post('/api/test-upload', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.json({ 
-        status: 'error', 
-        message: 'No file uploaded' 
-      });
-    }
-    
-    // Just acknowledge receipt of the file without processing
-    res.json({
-      status: 'success',
-      message: 'File received successfully',
-      file: {
-        name: req.file.originalname,
-        size: req.file.size,
-        path: req.file.path,
-        mimetype: req.file.mimetype
-      }
-    });
-  } catch (error) {
-    console.error('Error in test upload:', error);
-    res.status(500).json({ 
-      status: 'error', 
-      message: error.message 
-    });
-  }
-});
-
-app.get('/api/dashboard', (req, res) => {
-  console.log("Dashboard endpoint called");
-  console.log(`Returning data with ${dashboardData.reports.length} reports`);
-  res.json(dashboardData);
-});
-
-app.get('/api/reports', (req, res) => {
-  console.log("Reports endpoint called");
-  console.log(`Returning ${dashboardData.reports.length} reports`);
-  res.json(dashboardData.reports);
-});
-
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-  });
-}
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});

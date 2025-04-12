@@ -28,7 +28,8 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   Select,
-  Checkbox
+  Checkbox,
+  Textarea
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { FiUpload, FiFile, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
@@ -45,6 +46,8 @@ export default function Upload({ updateDashboard }) {
     auditorName: '',
     auditorEmail: '',
     buildingType: 'commercial',
+    region: 'dublin',
+    industry: 'commercial',
     notes: ''
   });
   
@@ -265,6 +268,38 @@ export default function Upload({ updateDashboard }) {
               </FormControl>
               
               <FormControl>
+                <FormLabel>Region</FormLabel>
+                <Select 
+                  name="region" 
+                  value={additionalDetails.region}
+                  onChange={handleInputChange}
+                >
+                  <option value="dublin">Dublin</option>
+                  <option value="cork">Cork</option>
+                  <option value="galway">Galway</option>
+                  <option value="limerick">Limerick</option>
+                  <option value="other">Other</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Industry</FormLabel>
+                <Select 
+                  name="industry" 
+                  value={additionalDetails.industry}
+                  onChange={handleInputChange}
+                >
+                  <option value="commercial">Commercial</option>
+                  <option value="manufacturing">Manufacturing</option>
+                  <option value="healthcare">Healthcare</option>
+                  <option value="education">Education</option>
+                  <option value="hospitality">Hospitality</option>
+                  <option value="technology">Technology</option>
+                  <option value="other">Other</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
                 <FormLabel>Grant Amount (€)</FormLabel>
                 <NumberInput 
                   min={0} 
@@ -295,11 +330,12 @@ export default function Upload({ updateDashboard }) {
               
               <FormControl gridColumn={{ md: 'span 2' }}>
                 <FormLabel>Notes</FormLabel>
-                <Input 
+                <Textarea 
                   name="notes" 
                   value={additionalDetails.notes}
                   onChange={handleInputChange}
                   placeholder="Any additional notes about this audit"
+                  rows={3}
                 />
               </FormControl>
             </SimpleGrid>
@@ -357,6 +393,18 @@ export default function Upload({ updateDashboard }) {
                 </Box>
               </SimpleGrid>
               
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <Box>
+                  <Text fontWeight="bold">Region:</Text>
+                  <Text>{extractedData.region ? extractedData.region.charAt(0).toUpperCase() + extractedData.region.slice(1) : 'Not specified'}</Text>
+                </Box>
+                
+                <Box>
+                  <Text fontWeight="bold">Industry:</Text>
+                  <Text>{extractedData.industry ? extractedData.industry.charAt(0).toUpperCase() + extractedData.industry.slice(1) : 'Not specified'}</Text>
+                </Box>
+              </SimpleGrid>
+              
               <Box>
                 <Text fontWeight="bold">Implementation Status:</Text>
                 <Text>{
@@ -391,6 +439,7 @@ export default function Upload({ updateDashboard }) {
                       <Text>Energy Savings: {action.energySavings.toLocaleString()} kWh</Text>
                       <Text>Cost Savings: €{action.costSavings.toLocaleString()}</Text>
                       <Text>Emissions Reduction: {action.emissionsReduction.toFixed(2)} tonnes CO₂e</Text>
+                      {action.status && <Text>Status: {action.status}</Text>}
                     </Box>
                   ))}
                 </Box>
