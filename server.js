@@ -482,3 +482,249 @@ async function extractDataWithFallback(filePath, fileName) {
     } else if (text.includes("education") || text.includes("Education") || text.includes("School") || text.includes("University")) {
       extractedData.industry = "education";
     }
+    
+    return extractedData;
+  } catch (error) {
+    console.error(`Error in fallback extraction for ${fileName}:`, error);
+    
+    // Return a minimal data structure to prevent further errors
+    return {
+      organizationName: fileName.replace(".pdf", ""),
+      totalCostSavings: 0,
+      totalEmissionsSaved: 0,
+      totalEnergySavings: 0,
+      grantAmount: 0,
+      implementationStatus: "pending",
+      region: "",
+      industry: "",
+      energyData: [],
+      recommendedActions: []
+    };
+  }
+}
+
+// Initialize default data on server start
+initializeSampleData();
+
+// API Endpoints
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  console.log("----------------------------");
+  console.log("Upload endpoint called");
+  console.log("----------------------------");
+  
+  // Log any additional form fields
+  console.log("Form data received:", req.body);
+  
+  try {
+    if (!req.file) {
+      console.log("Error: No file uploaded");
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    console.log(`File received: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    console.log(`Saved to: ${req.file.path}`);
+    
+    try {
+      const extractedData = await extractDataWithFallback(req.file.path, req.file.originalname);
+      
+      if (!extractedData) {
+        console.log("Failed to extract data from PDF");
+        return res.status(400).json({ error: 'Failed to extract data from PDF' });
+      }
+      
+      // Incorporate additional form data into the extracted data
+      if (req.body.grantAmount) {
+        extractedData.grantAmount = parseFloat(req.body.grantAmount);
+      }
+      
+      if (req.body.implementationStatus) {
+        extractedData.implementationStatus = req.body.implementationStatus;
+      }
+      
+      if (req.body.auditorName) {
+        extractedData.auditorName = req.body.auditorName;
+      }
+      
+      if (req.body.buildingType) {
+        extractedData.buildingType = req.body.buildingType;
+      }
+      
+      if (req.body.region) {
+        extractedData.region = req.body.region;
+      }
+      
+      if (req.body.industry) {
+        extractedData.industry = req.body.industry;
+      }
+      
+      if (req.body.notes) {
+        extractedData.notes = req.body.notes;
+      }
+      
+      console.log("Enhanced extracted data with form inputs:", extractedData);
+      
+      // Initialize dashboard with sample data if it's the first upload
+      if (dashboardData.totalAudits === 0) {
+        initializeSampleData();
+      }
+      
+      // Update dashboard data
+      dashboardData.totalAudits += 1;
+      dashboardData.totalEmissionsSaved += extractedData.totalEmissionsSaved || 0;
+      dashboardData.totalEuroSaved += extractedData.totalCostSavings || 0;
+      dashboardData.totalGrants += extractedData.grantAmount || 0;
+      
+      if (!dashboardData.organizations.includes(extractedData.organizationName)) {
+        dashboardData.organizations.push(extractedData.organizationName);
+      }
+      
+      // Track new regions and industries
+      if (extractedData.region && !dashboardData.regions.includes(extractedData.region)) {
+        dashboardData.regions.push(extractedData.region);
+      }
+      
+      if (extractedData.industry && !dashboardData.industries.includes(extractedData.industry)) {
+        dashboardData.industries.push(extractedData.industry);
+      }
+      
+      dashboardData.energyData = dashboardData.energyData.concat(
+        extractedData.energyData.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      dashboardData.recommendedActions = dashboardData.recommendedActions.concat(
+        extractedData.recommendedActions.map(item => ({
+          ...item,
+          organization: extractedData.organizationName
+        }))
+      );
+      
+      // Update application status
+      dashboardData.applicationStatus.total += 1;
+      
+      if (extractedData.implementationStatus === 'pending') {
+        dashboardData.applicationStatus.pending += 1;
+      } else if (extractedData.implementationStatus === 'in-progress') {
+        dashboardData.applicationStatus.inProgress += 1;
+      } else if (extractedData.implementationStatus === 'implemented') {
+        dashboardData.applicationStatus.completed += 1;
+      } else {
+        // Default to pending if status is unrecognized
+        dashboardData.applicationStatus.pending += 1;
+      }
+      
+      // Generate a recommended grant if not already present
+      if (extractedData.grantAmount > 0) {
+        const grantTypes = ["SEAI Commercial Grant", "Energy Efficiency Fund", "Green Business Fund", "Renewable Heat Incentive"];
+        const grantStatuses = ["Applied", "Eligible", "Recommended"];
+        
+        const newGrant = {
+          name: grantTypes[Math.floor(Math.random() * grantTypes.length)],
+          amount: extractedData.grantAmount,
+          status: grantStatuses[Math.floor(Math.random() * grantStatuses.length)],
+          organization: extractedData.organizationName
+        };
+        
+        dashboardData.recommendedGrants.push(newGrant);
+      }
+      
+      // Calculate and update audit conversion rate
+      const conversionReports = dashboardData.reports.filter(function(r) {
+        return r.data && r.data.implementationStatus === 'implemented';
+      });
+      
+      if (dashboardData.reports.length > 0) {
+        dashboardData.auditConversion = Math.round((conversionReports.length / dashboardData.reports.length) * 100);
+      }
+      
+      // Add the new report
+      dashboardData.reports.push({
+        fileName: req.file.originalname,
+        organizationName: extractedData.organizationName,
+        uploadDate: new Date().toISOString(),
+        data: extractedData
+      });
+      
+      console.log("Successfully processed file and updated dashboard data");
+      
+      res.json({
+        success: true,
+        extractedData,
+        dashboardData
+      });
+    } catch (extractionError) {
+      console.error("Error during PDF extraction:", extractionError);
+      return res.status(500).json({ error: `Error extracting data: ${extractionError.message}` });
+    }
+  } catch (error) {
+    console.error('Error in upload endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test upload endpoint - just for testing file uploads without PDF processing
+app.post('/api/test-upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.json({ 
+        status: 'error', 
+        message: 'No file uploaded' 
+      });
+    }
+    
+    // Just acknowledge receipt of the file without processing
+    res.json({
+      status: 'success',
+      message: 'File received successfully',
+      file: {
+        name: req.file.originalname,
+        size: req.file.size,
+        path: req.file.path,
+        mimetype: req.file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('Error in test upload:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message 
+    });
+  }
+});
+
+app.get('/api/dashboard', (req, res) => {
+  console.log("Dashboard endpoint called");
+  console.log(`Returning data with ${dashboardData.reports.length} reports`);
+  
+  // Ensure we have sample data for demo purposes
+  if (dashboardData.totalAudits === 0) {
+    initializeSampleData();
+  }
+  
+  res.json(dashboardData);
+});
+
+app.get('/api/reports', (req, res) => {
+  console.log("Reports endpoint called");
+  console.log(`Returning ${dashboardData.reports.length} reports`);
+  
+  // Ensure we have sample data for demo purposes
+  if (dashboardData.reports.length === 0) {
+    initializeSampleData();
+  }
+  
+  res.json(dashboardData.reports);
+});
+
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  });
+}
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
