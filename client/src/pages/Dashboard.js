@@ -503,14 +503,14 @@ export default function Dashboard({ data, isLoading }) {
       <Box mb={8}>
         <SectionHeading>Energy Usage Breakdown</SectionHeading>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="380px">
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="330px">
             <Heading size="sm" mb={4}>Energy Type Distribution</Heading>
             {energyTypeDistribution.every(item => item.value === 0) ? (
               <Flex justify="center" align="center" h="80%">
                 <Text color="gray.500">No energy data available. Upload reports to see distribution.</Text>
               </Flex>
             ) : (
-              <ResponsiveContainer width="100%" height="85%">
+              <ResponsiveContainer width="100%" height="90%">
                 <PieChart>
                   <Pie
                     data={energyTypeDistribution}
@@ -527,38 +527,38 @@ export default function Dashboard({ data, isLoading }) {
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => `${value.toLocaleString()} kWh`} />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '5px' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </Box>
           
-          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="380px">
+          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="330px">
             <Heading size="sm" mb={4}>Recommended Action Types</Heading>
             {recommendedActionTypes.every(item => item.energySavings === 0) ? (
               <Flex justify="center" align="center" h="80%">
                 <Text color="gray.500">No recommendation data available. Upload reports to see actions.</Text>
               </Flex>
             ) : (
-              <ResponsiveContainer width="100%" height="85%">
+              <ResponsiveContainer width="100%" height="90%">
                 <BarChart
                   data={recommendedActionTypes}
                   margin={{
                     top: 5,
                     right: 30,
                     left: 20,
-                    bottom: 30,
+                    bottom: 20,
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis height={50}
+                  <XAxis height={40}
                     dataKey="name" 
                     tick={{ fontSize: 10 }} 
                     tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value} 
                   />
                   <YAxis />
                   <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Legend wrapperStyle={{ paddingTop: '5px' }} />
                   <Bar dataKey="energySavings" name="Energy Savings (kWh)" fill="#3a1e6d" />
                 </BarChart>
               </ResponsiveContainer>
