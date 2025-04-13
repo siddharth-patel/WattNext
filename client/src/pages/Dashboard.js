@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -77,11 +77,117 @@ export default function Dashboard({ data, isLoading }) {
   // State for filters
   const [region, setRegion] = useState('all');
   const [industry, setIndustry] = useState('all');
-  const [year, setYear] = useState('2023');
+  const [year, setYear] = useState('all');
+  
+  // Filter data based on selected filters
+  const filterData = (items, hasOrgField = true) => {
+    if (!items || items.length === 0) return [];
+    
+    return items.filter(item => {
+      let passesRegionFilter = true;
+      let passesIndustryFilter = true;
+      let passesYearFilter = true;
+      
+      if (hasOrgField) {
+        // For items linked to organizations like energyData or recommendedActions
+        const org = item.organization;
+        const report = data.reports.find(r => r.organizationName === org);
+        
+        if (region !== 'all' && report?.data?.region) {
+          passesRegionFilter = report.data.region.toLowerCase() === region.toLowerCase();
+        }
+        
+        if (industry !== 'all' && report?.data?.industry) {
+          passesIndustryFilter = report.data.industry.toLowerCase() === industry.toLowerCase();
+        }
+        
+        if (year !== 'all' && report?.uploadDate) {
+          const reportYear = new Date(report.uploadDate).getFullYear().toString();
+          passesYearFilter = reportYear === year;
+        }
+      } else {
+        // For report items directly
+        if (region !== 'all' && item.data?.region) {
+          passesRegionFilter = item.data.region.toLowerCase() === region.toLowerCase();
+        }
+        
+        if (industry !== 'all' && item.data?.industry) {
+          passesIndustryFilter = item.data.industry.toLowerCase() === industry.toLowerCase();
+        }
+        
+        if (year !== 'all' && item.uploadDate) {
+          const reportYear = new Date(item.uploadDate).getFullYear().toString();
+          passesYearFilter = reportYear === year;
+        }
+      }
+      
+      return passesRegionFilter && passesIndustryFilter && passesYearFilter;
+    });
+  };
+  
+  // Filtered reports
+  const filteredReports = React.useMemo(() => {
+    return filterData(data.reports || [], false);
+  }, [data.reports, region, industry, year]);
+  
+  // Filtered organizations
+  const filteredOrganizations = React.useMemo(() => {
+    if (!filteredReports.length) return [];
+    
+    return [...new Set(filteredReports.map(report => report.organizationName))];
+  }, [filteredReports]);
+  
+  // Filtered energy data
+  const filteredEnergyData = React.useMemo(() => {
+    if (!data.energyData) return [];
+    
+    if (region === 'all' && industry === 'all' && year === 'all') {
+      return data.energyData;
+    }
+    
+    return data.energyData.filter(item => {
+      const org = item.organization;
+      return filteredOrganizations.includes(org);
+    });
+  }, [data.energyData, filteredOrganizations, region, industry, year]);
+  
+  // Filtered recommended actions
+  const filteredRecommendedActions = React.useMemo(() => {
+    if (!data.recommendedActions) return [];
+    
+    if (region === 'all' && industry === 'all' && year === 'all') {
+      return data.recommendedActions;
+    }
+    
+    return data.recommendedActions.filter(item => {
+      const org = item.organization;
+      return filteredOrganizations.includes(org);
+    });
+  }, [data.recommendedActions, filteredOrganizations, region, industry, year]);
+  
+  // Calculate filtered metrics
+  const filteredMetrics = React.useMemo(() => {
+    let totalAudits = filteredReports.length;
+    let totalEmissionsSaved = 0;
+    let totalEuroSaved = 0;
+    
+    filteredReports.forEach(report => {
+      if (report.data) {
+        totalEmissionsSaved += report.data.totalEmissionsSaved || 0;
+        totalEuroSaved += report.data.totalCostSavings || 0;
+      }
+    });
+    
+    return {
+      totalAudits,
+      totalEmissionsSaved,
+      totalEuroSaved
+    };
+  }, [filteredReports]);
   
   // Process data for charts with fallback data for empty state
   const energyTypeDistribution = React.useMemo(() => {
-    if (!data.energyData || data.energyData.length === 0) {
+    if (!filteredEnergyData || filteredEnergyData.length === 0) {
       console.log("No energy data available, using fallback data");
       return [
         { name: 'Electricity', value: 0 },
@@ -92,7 +198,7 @@ export default function Dashboard({ data, isLoading }) {
     
     console.log("Processing energy data for visualization");
     const energyTypes = {};
-    data.energyData.forEach(item => {
+    filteredEnergyData.forEach(item => {
       if (!energyTypes[item.type]) {
         energyTypes[item.type] = 0;
       }
@@ -103,10 +209,10 @@ export default function Dashboard({ data, isLoading }) {
       name: type,
       value: energyTypes[type]
     }));
-  }, [data.energyData]);
+  }, [filteredEnergyData]);
   
   const recommendedActionTypes = React.useMemo(() => {
-    if (!data.recommendedActions || data.recommendedActions.length === 0) {
+    if (!filteredRecommendedActions || filteredRecommendedActions.length === 0) {
       console.log("No recommended actions available, using fallback data");
       return [
         { name: 'Solar PV', energySavings: 0, costSavings: 0, emissionsReduction: 0, count: 0 },
@@ -117,7 +223,7 @@ export default function Dashboard({ data, isLoading }) {
     
     console.log("Processing recommended actions for visualization");
     const actionTypes = {};
-    data.recommendedActions.forEach(item => {
+    filteredRecommendedActions.forEach(item => {
       if (!actionTypes[item.name]) {
         actionTypes[item.name] = {
           count: 0,
@@ -136,12 +242,12 @@ export default function Dashboard({ data, isLoading }) {
       name,
       ...actionTypes[name]
     }));
-  }, [data.recommendedActions]);
+  }, [filteredRecommendedActions]);
   
   // Monthly energy usage data (placeholder or derived from real data)
   const monthlyEnergyUsage = React.useMemo(() => {
-    // If we had actual monthly data, we would process it here
-    // For now, providing placeholder data that matches what we'd expect
+    // If we had actual monthly data, we would filter it here
+    // For now, providing placeholder data
     return [
       { month: 'Jan', electricity: 35, heating: 45 },
       { month: 'Feb', electricity: 30, heating: 40 },
@@ -158,19 +264,26 @@ export default function Dashboard({ data, isLoading }) {
     ];
   }, []);
   
-  // Application status data
+  // Application status data - filtered based on implementation status
   const applicationStatus = React.useMemo(() => {
+    const pending = filteredReports.filter(r => r.data?.implementationStatus === 'pending').length;
+    const inProgress = filteredReports.filter(r => r.data?.implementationStatus === 'in-progress').length;
+    const completed = filteredReports.filter(r => r.data?.implementationStatus === 'implemented').length;
+    const rejected = 0; // Assuming no rejected status for now
+    const total = filteredReports.length;
+    
     return {
-      pending: data.applicationStatus?.pending || 15,
-      inProgress: data.applicationStatus?.inProgress || 28,
-      completed: data.applicationStatus?.completed || 45,
-      rejected: data.applicationStatus?.rejected || 12,
-      total: data.applicationStatus?.total || 100
+      pending: pending || 0,
+      inProgress: inProgress || 0,
+      completed: completed || 0,
+      rejected: rejected || 0,
+      total: total || 1 // Avoid division by zero
     };
-  }, [data.applicationStatus]);
+  }, [filteredReports]);
   
   // Energy consumption breakdown data
   const energyConsumptionBreakdown = React.useMemo(() => {
+    // Would be filtered based on selected filters if real data
     return [
       { month: 'Jan', residential: 120, commercial: 230, industrial: 450 },
       { month: 'Feb', residential: 130, commercial: 240, industrial: 430 },
@@ -181,18 +294,21 @@ export default function Dashboard({ data, isLoading }) {
     ];
   }, []);
   
-  // Recommended grants data
+  // Recommended grants data - would be filtered if real data
   const recommendedGrants = React.useMemo(() => {
-    return [
-      { name: 'SEAI Commercial Grant', amount: 45000, status: 'Applied' },
-      { name: 'Energy Efficiency Fund', amount: 75000, status: 'Eligible' },
-      { name: 'Green Business Fund', amount: 35000, status: 'Recommended' },
-      { name: 'Renewable Heat Incentive', amount: 28000, status: 'Eligible' }
-    ];
-  }, []);
+    return (data.recommendedGrants || []).filter(grant => {
+      if (region === 'all' && industry === 'all' && year === 'all') {
+        return true;
+      }
+      
+      const org = grant.organization;
+      return filteredOrganizations.includes(org);
+    });
+  }, [data.recommendedGrants, filteredOrganizations, region, industry, year]);
   
-  // Auditor performance data - sorted by completion rate
+  // Auditor performance data - would be filtered if real data
   const auditorPerformance = React.useMemo(() => {
+    // In a real app, we'd filter the auditor data based on the selected filters
     const auditors = data.auditors || [
       { 
         name: "Emma Thompson", 
@@ -240,13 +356,29 @@ export default function Dashboard({ data, isLoading }) {
   const metrics = React.useMemo(() => {
     let avgSavingsPerAudit = 0;
     let avgEmissionsPerAudit = 0;
-    let auditConversion = data.auditConversion || 68; // Default value if not provided
-    let totalGrants = data.totalGrants || 185000; // Default value if not provided
-    let completionRate = Math.round((applicationStatus.completed / applicationStatus.total) * 100) || 45;
+    let auditConversion = 0;
+    let totalGrants = 0;
+    let completionRate = 0;
+    let totalRecommendedGrants = 0;
     
-    if (data.totalAudits > 0) {
-      avgSavingsPerAudit = data.totalEuroSaved / data.totalAudits;
-      avgEmissionsPerAudit = data.totalEmissionsSaved / data.totalAudits;
+    if (filteredReports.length > 0) {
+      const implementedReports = filteredReports.filter(r => r.data?.implementationStatus === 'implemented');
+      auditConversion = Math.round((implementedReports.length / filteredReports.length) * 100);
+      
+      if (filteredMetrics.totalAudits > 0) {
+        avgSavingsPerAudit = filteredMetrics.totalEuroSaved / filteredMetrics.totalAudits;
+        avgEmissionsPerAudit = filteredMetrics.totalEmissionsSaved / filteredMetrics.totalAudits;
+      }
+      
+      totalGrants = filteredReports.reduce((sum, report) => sum + (report.data?.grantAmount || 0), 0);
+      completionRate = Math.round((applicationStatus.completed / applicationStatus.total) * 100);
+      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.amount || 0), 0);
+    } else {
+      // Default values if no reports match the filters
+      auditConversion = data.auditConversion || 0;
+      totalGrants = data.totalGrants || 0;
+      completionRate = applicationStatus.completed > 0 ? Math.round((applicationStatus.completed / applicationStatus.total) * 100) : 0;
+      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.amount || 0), 0);
     }
     
     return {
@@ -255,14 +387,33 @@ export default function Dashboard({ data, isLoading }) {
       auditConversion,
       totalGrants,
       completionRate,
-      totalRecommendedGrants: recommendedGrants.reduce((sum, grant) => sum + grant.amount, 0)
+      totalRecommendedGrants
     };
-  }, [data.totalAudits, data.totalEuroSaved, data.totalEmissionsSaved, data.auditConversion, data.totalGrants, applicationStatus, recommendedGrants]);
+  }, [filteredReports, filteredMetrics, applicationStatus, recommendedGrants, data]);
   
   const COLORS = ['#3a1e6d', '#00813a', '#46A09A', '#cb6a15', '#6e1560', '#9B2C2C'];
 
   // Check for no data condition
-  const hasNoData = !data.reports || data.reports.length === 0;
+  const hasNoData = !filteredReports || filteredReports.length === 0;
+
+  // Get available years from reports
+  const availableYears = React.useMemo(() => {
+    if (!data.reports || data.reports.length === 0) return ['2022', '2023', '2024', '2025'];
+    
+    const years = data.reports
+      .map(report => new Date(report.uploadDate).getFullYear())
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort((a, b) => b - a); // Sort descending
+      
+    return years.map(year => year.toString());
+  }, [data.reports]);
+
+  // Reset filters
+  const handleResetFilters = () => {
+    setRegion('all');
+    setIndustry('all');
+    setYear('all');
+  };
 
   if (isLoading) {
     return (
@@ -310,6 +461,7 @@ export default function Dashboard({ data, isLoading }) {
           <option value="healthcare">Healthcare</option>
           <option value="education">Education</option>
           <option value="hospitality">Hospitality</option>
+          <option value="technology">Technology</option>
         </Select>
         
         <Select 
@@ -321,25 +473,27 @@ export default function Dashboard({ data, isLoading }) {
           icon={<FiChevronDown />}
           bg="white"
         >
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
-          <option value="2023">2023</option>
-          <option value="2022">2022</option>
+          <option value="all">All Years</option>
+          {availableYears.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
         </Select>
         
         <Button 
           size="sm" 
           leftIcon={<FiFilter />} 
           variant="outline" 
-          ml="auto"
+          onClick={handleResetFilters}
+          isDisabled={region === 'all' && industry === 'all' && year === 'all'}
         >
-          More Filters
+          Reset Filters
         </Button>
         
         <Button 
           size="sm" 
           leftIcon={<FiDownload />} 
           colorScheme="blue"
+          ml="auto"
         >
           Export
         </Button>
@@ -349,7 +503,11 @@ export default function Dashboard({ data, isLoading }) {
       {hasNoData && (
         <Alert status="info" mb={8} borderRadius="md">
           <AlertIcon />
-          <Text>No audit reports have been uploaded yet. Upload some reports to see visualizations and insights.</Text>
+          <Text>
+            {(region !== 'all' || industry !== 'all' || year !== 'all') 
+              ? 'No data matches your filter criteria. Try adjusting your filters.'
+              : 'No audit reports have been uploaded yet. Upload some reports to see visualizations and insights.'}
+          </Text>
         </Alert>
       )}
       
@@ -357,18 +515,18 @@ export default function Dashboard({ data, isLoading }) {
       <SimpleGrid columns={{ base: 1, md: 5 }} spacing={4} mb={8}>
         <StatCard 
           label="Total Audits" 
-          value={data.totalAudits} 
-          helpText={`${data.organizations.length} organizations`}
+          value={filteredMetrics.totalAudits} 
+          helpText={`${filteredOrganizations.length} organizations`}
           color="seai.primary" 
         />
         <StatCard 
           label="Total CO₂ Emissions Saved" 
-          value={`${data.totalEmissionsSaved.toFixed(2)} tonnes`} 
+          value={`${filteredMetrics.totalEmissionsSaved.toFixed(2)} tonnes`} 
           color="seai.secondary" 
         />
         <StatCard 
           label="Total Cost Savings" 
-          value={`€${(data.totalEuroSaved || 0).toLocaleString()}`} 
+          value={`€${(filteredMetrics.totalEuroSaved || 0).toLocaleString()}`} 
           color="seai.accent" 
         />
         <StatCard 
@@ -404,23 +562,29 @@ export default function Dashboard({ data, isLoading }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {recommendedGrants.map((grant, index) => (
-                  <Tr key={index}>
-                    <Td>{grant.name}</Td>
-                    <Td isNumeric>€{grant.amount.toLocaleString()}</Td>
-                    <Td>
-                      <Badge 
-                        colorScheme={
-                          grant.status === 'Applied' ? 'blue' : 
-                          grant.status === 'Eligible' ? 'green' : 
-                          'yellow'
-                        }
-                      >
-                        {grant.status}
-                      </Badge>
-                    </Td>
+                {recommendedGrants.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
                   </Tr>
-                ))}
+                ) : (
+                  recommendedGrants.slice(0, 4).map((grant, index) => (
+                    <Tr key={index}>
+                      <Td>{grant.name}</Td>
+                      <Td isNumeric>€{grant.amount.toLocaleString()}</Td>
+                      <Td>
+                        <Badge 
+                          colorScheme={
+                            grant.status === 'Applied' ? 'blue' : 
+                            grant.status === 'Eligible' ? 'green' : 
+                            'yellow'
+                          }
+                        >
+                          {grant.status}
+                        </Badge>
+                      </Td>
+                    </Tr>
+                  ))
+                )}
               </Tbody>
             </Table>
           </TableContainer>
@@ -503,7 +667,8 @@ export default function Dashboard({ data, isLoading }) {
       <Box mb={8}>
         <SectionHeading>Energy Usage Breakdown</SectionHeading>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="330px">
+          {/* Energy Type Distribution */}
+          <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="330px">
             <Heading size="sm" mb={4}>Energy Type Distribution</Heading>
             {energyTypeDistribution.every(item => item.value === 0) ? (
               <Flex justify="center" align="center" h="80%">
@@ -533,6 +698,7 @@ export default function Dashboard({ data, isLoading }) {
             )}
           </Box>
           
+          {/* Recommended Action Types */}
           <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="330px">
             <Heading size="sm" mb={4}>Recommended Action Types</Heading>
             {recommendedActionTypes.every(item => item.energySavings === 0) ? (
@@ -547,14 +713,15 @@ export default function Dashboard({ data, isLoading }) {
                     top: 5,
                     right: 30,
                     left: 20,
-                    bottom: 20,
+                    bottom: 20, // Adequate bottom margin for labels
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis height={40}
+                  <XAxis 
                     dataKey="name" 
                     tick={{ fontSize: 10 }} 
-                    tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value} 
+                    tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+                    height={40} // Reasonable height for labels
                   />
                   <YAxis />
                   <Tooltip />
@@ -633,8 +800,8 @@ export default function Dashboard({ data, isLoading }) {
           Top Recommended Actions
         </SectionHeading>
         <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg">
-          {!data.recommendedActions || data.recommendedActions.length === 0 ? (
-            <Text color="gray.500" textAlign="center" py={4}>No recommended actions available. Upload reports to see recommendations.</Text>
+          {!filteredRecommendedActions || filteredRecommendedActions.length === 0 ? (
+            <Text color="gray.500" textAlign="center" py={4}>No recommended actions available for the selected filters.</Text>
           ) : (
             <TableContainer>
               <Table variant="simple" size="sm">
@@ -648,15 +815,19 @@ export default function Dashboard({ data, isLoading }) {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {data.recommendedActions.slice(0, 5).map((action, index) => (
+                  {filteredRecommendedActions.slice(0, 5).map((action, index) => (
                     <Tr key={index}>
                       <Td>{action.name}</Td>
                       <Td isNumeric>{action.energySavings.toLocaleString()}</Td>
                       <Td isNumeric>{action.costSavings.toLocaleString()}</Td>
                       <Td isNumeric>{action.emissionsReduction.toFixed(2)}</Td>
                       <Td>
-                        <Badge colorScheme={index % 3 === 0 ? "green" : index % 3 === 1 ? "yellow" : "gray"}>
-                          {index % 3 === 0 ? "Implemented" : index % 3 === 1 ? "In Progress" : "Pending"}
+                        <Badge colorScheme={
+                          action.status === 'Implemented' ? "green" : 
+                          action.status === 'In Progress' ? "yellow" : 
+                          "gray"
+                        }>
+                          {action.status}
                         </Badge>
                       </Td>
                     </Tr>
@@ -719,11 +890,11 @@ export default function Dashboard({ data, isLoading }) {
       {/* Organizations */}
       <Box mb={8}>
         <SectionHeading>Organizations</SectionHeading>
-        {!data.organizations || data.organizations.length === 0 ? (
-          <Text color="gray.500">No organizations available. Upload reports to see the list.</Text>
+        {!filteredOrganizations || filteredOrganizations.length === 0 ? (
+          <Text color="gray.500">No organizations available for the selected filters.</Text>
         ) : (
           <Flex flexWrap="wrap" gap={2}>
-            {data.organizations.map((org, index) => (
+            {filteredOrganizations.map((org, index) => (
               <Badge key={index} colorScheme="purple" p={2} borderRadius="md">
                 {org}
               </Badge>
