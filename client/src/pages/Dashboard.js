@@ -641,22 +641,31 @@ export default function Dashboard({ data, isLoading }) {
       <Table variant="simple" size="sm">
         <Thead position="sticky" top={0} bg="white" zIndex={1}>
           <Tr>
-            <Th>Grant Name</Th>
-            <Th isNumeric>Recommended</Th>
-            <Th isNumeric>Applied</Th>
-            <Th isNumeric>Granted</Th>
+            <Th width="50%">Grant Name</Th>
+            <Th isNumeric width="25%">Applied</Th>
+            <Th isNumeric width="25%">Granted</Th>
           </Tr>
         </Thead>
         <Tbody>
           {recommendedGrants.length === 0 ? (
             <Tr>
-              <Td colSpan={4} textAlign="center">No grants matching current filters</Td>
+              <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
             </Tr>
           ) : (
             recommendedGrants.map((grant, index) => (
               <Tr key={index}>
-                <Td>{grant.name}</Td>
-                <Td isNumeric>€{grant.recommended.toLocaleString()}</Td>
+                <Td>
+                  <Text fontWeight="medium">{grant.name}</Text>
+                  {grant.status && (
+                    <Badge size="sm" colorScheme={
+                      grant.status === "Applied" ? "blue" : 
+                      grant.status === "Eligible" ? "green" : 
+                      "yellow"
+                    } mt={1}>
+                      {grant.status}
+                    </Badge>
+                  )}
+                </Td>
                 <Td isNumeric>€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
                 <Td isNumeric>€{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}</Td>
               </Tr>
@@ -665,23 +674,40 @@ export default function Dashboard({ data, isLoading }) {
         </Tbody>
       </Table>
     </TableContainer>
+    
+    {/* Added summary footer */}
+    {recommendedGrants.length > 0 && (
+      <Flex justify="space-between" mt={4} px={2} borderTop="1px" borderColor="gray.200" pt={2}>
+        <Text fontSize="sm" fontWeight="medium">Total</Text>
+        <HStack spacing={8}>
+          <Text fontSize="sm" fontWeight="medium">
+            €{recommendedGrants.reduce((sum, grant) => 
+              sum + (grant.applied || grant.recommended * 0.7), 0).toLocaleString()}
+          </Text>
+          <Text fontSize="sm" fontWeight="medium">
+            €{recommendedGrants.reduce((sum, grant) => 
+              sum + (grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6), 0).toLocaleString()}
+          </Text>
+        </HStack>
+      </Flex>
+    )}
   </Box>
   
   {/* Completion Rate Widget */}
   <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
     <Heading size="sm" mb={4}>Completion Rate</Heading>
-    <Flex flexDirection={{ base: "column", md: "row" }} align="center" justify="space-between">
+    <Flex flexDirection={{ base: "column", md: "row" }} align="center" justify="space-between" h="calc(100% - 32px)">
       <Box width={{ base: "100%", md: "40%" }} mb={{ base: 4, md: 0 }}>
         <CircularProgress 
           value={metrics.completionRate} 
-          size="120px" 
+          size="130px" 
           thickness="8px" 
           color="green.400"
         >
           <CircularProgressLabel fontWeight="bold" fontSize="xl">{metrics.completionRate}%</CircularProgressLabel>
         </CircularProgress>
         
-        <Box mt={6}>
+        <Box mt={8}>
           <Flex justify="space-between">
             <Text fontSize="sm" fontWeight="medium">Total Applications</Text>
             <Text fontSize="sm" fontWeight="bold">{applicationStatus.total}</Text>
@@ -691,11 +717,16 @@ export default function Dashboard({ data, isLoading }) {
             <Text fontSize="sm" fontWeight="medium">Target Completion</Text>
             <Text fontSize="sm" fontWeight="bold">75%</Text>
           </Flex>
+          <Divider my={2} />
+          <Flex justify="space-between">
+            <Text fontSize="sm" fontWeight="medium">Avg. Implementation Time</Text>
+            <Text fontSize="sm" fontWeight="bold">4.2 months</Text>
+          </Flex>
         </Box>
       </Box>
       
       <Box width={{ base: "100%", md: "55%" }}>
-        <Box mb={4}>
+        <Box mb={5}>
           <Flex justify="space-between" mb={1}>
             <Text fontSize="sm">Submitted</Text>
             <Text fontSize="sm" fontWeight="medium">{applicationStatus.total}</Text>
@@ -703,7 +734,7 @@ export default function Dashboard({ data, isLoading }) {
           <Progress value={100} size="md" colorScheme="blue" borderRadius="md" />
         </Box>
         
-        <Box mb={4}>
+        <Box mb={5}>
           <Flex justify="space-between" mb={1}>
             <Text fontSize="sm">In Progress</Text>
             <Text fontSize="sm" fontWeight="medium">{applicationStatus.inProgress}</Text>
@@ -711,7 +742,7 @@ export default function Dashboard({ data, isLoading }) {
           <Progress value={(applicationStatus.inProgress / applicationStatus.total) * 100} size="md" colorScheme="yellow" borderRadius="md" />
         </Box>
         
-        <Box mb={4}>
+        <Box mb={5}>
           <Flex justify="space-between" mb={1}>
             <Text fontSize="sm">Completed</Text>
             <Text fontSize="sm" fontWeight="medium">{applicationStatus.completed}</Text>
@@ -719,7 +750,7 @@ export default function Dashboard({ data, isLoading }) {
           <Progress value={(applicationStatus.completed / applicationStatus.total) * 100} size="md" colorScheme="green" borderRadius="md" />
         </Box>
         
-        <Box mb={2}>
+        <Box mb={3}>
           <Flex justify="space-between" mb={1}>
             <Text fontSize="sm">Rejected</Text>
             <Text fontSize="sm" fontWeight="medium">{applicationStatus.rejected}</Text>
@@ -727,7 +758,7 @@ export default function Dashboard({ data, isLoading }) {
           <Progress value={(applicationStatus.rejected / applicationStatus.total) * 100} size="md" colorScheme="red" borderRadius="md" />
         </Box>
         
-        <HStack mt={4} spacing={4} justify="space-between">
+        <HStack mt={6} spacing={4} justify="space-between">
           <Flex align="center">
             <Box w={3} h={3} borderRadius="full" bg="blue.500" mr={2}></Box>
             <Text fontSize="xs">Submitted</Text>
