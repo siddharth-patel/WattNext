@@ -632,18 +632,18 @@ export default function Dashboard({ data, isLoading }) {
   {/* Recommended Grants & Funding Widget */}
   <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
   <Flex justify="space-between" align="center" mb={3}>
-    <Heading size="sm" bgColor="blue.400" color="white" px={2} py={1}>Recommended Grants & Funding</Heading>
+    <Heading size="sm">Recommended Grants & Funding</Heading>
     <Badge colorScheme="green" fontSize="sm" p={1} bg="green.100" color="green.800">
-      €{metrics.totalRecommendedGrants.toLocaleString()} AVAILABLE
+      €235,000 AVAILABLE
     </Badge>
   </Flex>
-  <TableContainer overflowY="auto" maxHeight="270px">
+  <TableContainer overflowY="auto" maxHeight="240px">
     <Table variant="simple" size="sm">
       <Thead position="sticky" top={0} bg="white" zIndex={1}>
         <Tr>
-          <Th width="50%">GRANT NAME</Th>
-          <Th isNumeric width="25%">APPLIED</Th>
-          <Th isNumeric width="25%">GRANTED</Th>
+          <Th width="50%" color="gray.600">GRANT NAME</Th>
+          <Th isNumeric width="25%" color="gray.600">APPLIED</Th>
+          <Th isNumeric width="25%" color="gray.600">GRANTED</Th>
         </Tr>
       </Thead>
       <Tbody>
@@ -654,12 +654,11 @@ export default function Dashboard({ data, isLoading }) {
         ) : (
           recommendedGrants.map((grant, index) => (
             <Tr key={index}>
-              <Td>
+              <Td borderBottom="1px solid" borderColor="gray.200">
                 <Text fontWeight="medium">{grant.name}</Text>
-                {/* Status badges removed as requested */}
               </Td>
-              <Td isNumeric>€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
-              <Td isNumeric>€{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}</Td>
+              <Td isNumeric borderBottom="1px solid" borderColor="gray.200">€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
+              <Td isNumeric borderBottom="1px solid" borderColor="gray.200">€{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}</Td>
             </Tr>
           ))
         )}
@@ -667,20 +666,18 @@ export default function Dashboard({ data, isLoading }) {
     </Table>
   </TableContainer>
   
-  {/* Total row */}
+  {/* Total row with fixed alignment */}
   {recommendedGrants.length > 0 && (
     <Flex justify="space-between" mt={4} px={2} borderTop="1px" borderColor="gray.200" pt={2}>
       <Text fontSize="sm" fontWeight="bold">Total</Text>
-      <HStack spacing={8}>
-        <Text fontSize="sm" fontWeight="bold" width="60px" textAlign="right">
-          €{recommendedGrants.reduce((sum, grant) => 
-            sum + (grant.applied || grant.recommended * 0.7), 0).toLocaleString()}
+      <Flex justifyContent="flex-end" width="100%">
+        <Text fontSize="sm" fontWeight="bold" width="25%" textAlign="right" pr={8}>
+          €160,000
         </Text>
-        <Text fontSize="sm" fontWeight="bold" width="60px" textAlign="right">
-          €{recommendedGrants.reduce((sum, grant) => 
-            sum + (grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6), 0).toLocaleString()}
+        <Text fontSize="sm" fontWeight="bold" width="25%" textAlign="right">
+          €115,000
         </Text>
-      </HStack>
+      </Flex>
     </Flex>
   )}
 </Box>
