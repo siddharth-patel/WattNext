@@ -628,8 +628,8 @@ export default function Dashboard({ data, isLoading }) {
       
       {/* Additional Stats - Second Row */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
-          <Flex justify="space-between" align="center" mb={4}>
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+          <Flex justify="space-between" align="center" mb={3}>
             <Heading size="sm">Recommended Grants & Funding</Heading>
             <Badge colorScheme="green" fontSize="sm" p={1}>
               €{metrics.totalRecommendedGrants.toLocaleString()} available
@@ -673,20 +673,20 @@ export default function Dashboard({ data, isLoading }) {
           </TableContainer>
         </Box>
         
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
-          <Heading size="sm" mb={4}>Completion Rate</Heading>
-          <Flex justify="space-between" align="center" mb={6}>
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+          <Heading size="sm" mb={3}>Completion Rate</Heading>
+          <Flex justify="space-between" align="center">
             <CircularProgress 
               value={metrics.completionRate} 
-              size="120px" 
+              size="100px" 
               thickness="8px" 
               color="green.400"
             >
               <CircularProgressLabel fontWeight="bold" fontSize="xl">{metrics.completionRate}%</CircularProgressLabel>
             </CircularProgress>
             
-            <Box flex="1" ml={8}>
-              <Box mb={4}>
+            <Box flex="1" ml={6}>
+              <Box mb={3}>
                 <Flex justify="space-between" mb={1}>
                   <Text fontSize="sm">Submitted</Text>
                   <Text fontSize="sm" fontWeight="medium">{applicationStatus.total}</Text>
@@ -694,7 +694,7 @@ export default function Dashboard({ data, isLoading }) {
                 <Progress value={100} size="sm" colorScheme="blue" borderRadius="md" />
               </Box>
               
-              <Box mb={4}>
+              <Box mb={3}>
                 <Flex justify="space-between" mb={1}>
                   <Text fontSize="sm">In Progress</Text>
                   <Text fontSize="sm" fontWeight="medium">{applicationStatus.inProgress}</Text>
