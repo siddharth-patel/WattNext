@@ -335,11 +335,11 @@ export default function Dashboard({ data, isLoading }) {
   const recommendedGrants = React.useMemo(() => {
     // Return predefined grants instead of filtering from data
     return [
-      { name: 'Energy Audits', recommended: 45000, status: 'Applied' },
-      { name: 'Better Energy Communities Scheme', recommended: 75000, status: 'Eligible' },
-      { name: 'SME Energy Support Scheme', recommended: 35000, status: 'Recommended' },
-      { name: 'Excellence in Energy Efficient Design Grant', recommended: 28000, status: 'Eligible' },
-      { name: 'Support for Renewable Energy Installations', recommended: 52000, status: 'Applied' }
+      { name: 'Energy Audits', recommended: 45000, applied: 32000, status: 'Applied' },
+      { name: 'Better Energy Communities Scheme', recommended: 75000, applied: 55000, status: 'Eligible' },
+      { name: 'SME Energy Support Scheme', recommended: 35000, applied: 20000, status: 'Recommended' },
+      { name: 'Excellence in Energy Efficient Design Grant', recommended: 28000, applied: 15000, status: 'Eligible' },
+      { name: 'Support for Renewable Energy Installations', recommended: 52000, applied: 38000, status: 'Applied' }
     ];
   }, []);
   
@@ -628,91 +628,111 @@ export default function Dashboard({ data, isLoading }) {
       
       {/* Additional Stats - Second Row */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
-          <Flex justify="space-between" align="center" mb={3}>
-            <Heading size="sm">Recommended Grants & Funding</Heading>
-            <Badge colorScheme="green" fontSize="sm" p={1}>
-              €{metrics.totalRecommendedGrants.toLocaleString()} available
-            </Badge>
+  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+    <Flex justify="space-between" align="center" mb={3}>
+      <Heading size="sm">Recommended Grants & Funding</Heading>
+      <Badge colorScheme="green" fontSize="sm" p={1}>
+        €{metrics.totalRecommendedGrants.toLocaleString()} available
+      </Badge>
+    </Flex>
+    <TableContainer>
+      <Table variant="simple" size="sm">
+        <Thead>
+          <Tr>
+            <Th>Grant Name</Th>
+            <Th isNumeric>Recommended</Th>
+            <Th isNumeric>Applied</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {recommendedGrants.length === 0 ? (
+            <Tr>
+              <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
+            </Tr>
+          ) : (
+            recommendedGrants.map((grant, index) => (
+              <Tr key={index}>
+                <Td>{grant.name}</Td>
+                <Td isNumeric>€{grant.recommended.toLocaleString()}</Td>
+                <Td isNumeric>€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
+              </Tr>
+            ))
+          )}
+        </Tbody>
+      </Table>
+    </TableContainer>
+  </Box>
+  
+  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+    <Heading size="sm" mb={4}>Completion Rate</Heading>
+    <Flex flexDirection={{ base: "column", md: "row" }} align="center" justify="space-between">
+      <Box width={{ base: "100%", md: "40%" }} mb={{ base: 4, md: 0 }}>
+        <CircularProgress 
+          value={metrics.completionRate} 
+          size="120px" 
+          thickness="8px" 
+          color="green.400"
+        >
+          <CircularProgressLabel fontWeight="bold" fontSize="xl">{metrics.completionRate}%</CircularProgressLabel>
+        </CircularProgress>
+        
+        <Box mt={4}>
+          <Flex justify="space-between">
+            <Text fontSize="sm" fontWeight="medium">Total Applications</Text>
+            <Text fontSize="sm" fontWeight="bold">{applicationStatus.total}</Text>
           </Flex>
-          <TableContainer>
-            <Table variant="simple" size="sm">
-              <Thead>
-                <Tr>
-                  <Th>Grant Name</Th>
-                  <Th isNumeric>Recommended</Th>
-                  <Th>Applied</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {recommendedGrants.length === 0 ? (
-                  <Tr>
-                    <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
-                  </Tr>
-                ) : (
-                  recommendedGrants.map((grant, index) => (
-                    <Tr key={index}>
-                      <Td>{grant.name}</Td>
-                      <Td isNumeric>€{grant.recommended.toLocaleString()}</Td>
-                      <Td>
-                        <Badge 
-                          colorScheme={
-                            grant.status === 'Applied' ? 'blue' : 
-                            grant.status === 'Eligible' ? 'green' : 
-                            'yellow'
-                          }
-                        >
-                          {grant.status}
-                        </Badge>
-                      </Td>
-                    </Tr>
-                  ))
-                )}
-              </Tbody>
-            </Table>
-          </TableContainer>
+          <Divider my={2} />
+          <Flex justify="space-between">
+            <Text fontSize="sm" fontWeight="medium">Target Completion</Text>
+            <Text fontSize="sm" fontWeight="bold">75%</Text>
+          </Flex>
+        </Box>
+      </Box>
+      
+      <Box width={{ base: "100%", md: "55%" }}>
+        <Box mb={4}>
+          <Flex justify="space-between" mb={1}>
+            <Text fontSize="sm">Submitted</Text>
+            <Text fontSize="sm" fontWeight="medium">{applicationStatus.total}</Text>
+          </Flex>
+          <Progress value={100} size="md" colorScheme="blue" borderRadius="md" />
         </Box>
         
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
-          <Heading size="sm" mb={3}>Completion Rate</Heading>
-          <Flex justify="space-between" align="center">
-            <CircularProgress 
-              value={metrics.completionRate} 
-              size="100px" 
-              thickness="8px" 
-              color="green.400"
-            >
-              <CircularProgressLabel fontWeight="bold" fontSize="xl">{metrics.completionRate}%</CircularProgressLabel>
-            </CircularProgress>
-            
-            <Box flex="1" ml={6}>
-              <Box mb={3}>
-                <Flex justify="space-between" mb={1}>
-                  <Text fontSize="sm">Submitted</Text>
-                  <Text fontSize="sm" fontWeight="medium">{applicationStatus.total}</Text>
-                </Flex>
-                <Progress value={100} size="sm" colorScheme="blue" borderRadius="md" />
-              </Box>
-              
-              <Box mb={3}>
-                <Flex justify="space-between" mb={1}>
-                  <Text fontSize="sm">In Progress</Text>
-                  <Text fontSize="sm" fontWeight="medium">{applicationStatus.inProgress}</Text>
-                </Flex>
-                <Progress value={(applicationStatus.inProgress / applicationStatus.total) * 100} size="sm" colorScheme="yellow" borderRadius="md" />
-              </Box>
-              
-              <Box>
-                <Flex justify="space-between" mb={1}>
-                  <Text fontSize="sm">Completed</Text>
-                  <Text fontSize="sm" fontWeight="medium">{applicationStatus.completed}</Text>
-                </Flex>
-                <Progress value={(applicationStatus.completed / applicationStatus.total) * 100} size="sm" colorScheme="green" borderRadius="md" />
-              </Box>
-            </Box>
+        <Box mb={4}>
+          <Flex justify="space-between" mb={1}>
+            <Text fontSize="sm">In Progress</Text>
+            <Text fontSize="sm" fontWeight="medium">{applicationStatus.inProgress}</Text>
           </Flex>
+          <Progress value={(applicationStatus.inProgress / applicationStatus.total) * 100} size="md" colorScheme="yellow" borderRadius="md" />
         </Box>
-      </SimpleGrid>
+        
+        <Box mb={2}>
+          <Flex justify="space-between" mb={1}>
+            <Text fontSize="sm">Completed</Text>
+            <Text fontSize="sm" fontWeight="medium">{applicationStatus.completed}</Text>
+          </Flex>
+          <Progress value={(applicationStatus.completed / applicationStatus.total) * 100} size="md" colorScheme="green" borderRadius="md" />
+        </Box>
+        
+        <HStack mt={4} spacing={4} justify="space-between">
+          <Flex align="center">
+            <Box w={3} h={3} borderRadius="full" bg="blue.500" mr={2}></Box>
+            <Text fontSize="xs">Submitted</Text>
+          </Flex>
+          <Flex align="center">
+            <Box w={3} h={3} borderRadius="full" bg="yellow.500" mr={2}></Box>
+            <Text fontSize="xs">In Progress</Text>
+          </Flex>
+          <Flex align="center">
+            <Box w={3} h={3} borderRadius="full" bg="green.500" mr={2}></Box>
+            <Text fontSize="xs">Completed</Text>
+          </Flex>
+        </HStack>
+      </Box>
+    </Flex>
+  </Box>
+</SimpleGrid>
+
       
       {/* Application Status */}
       <Box mb={8}>
