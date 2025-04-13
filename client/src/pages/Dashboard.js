@@ -666,19 +666,27 @@ export default function Dashboard({ data, isLoading }) {
     </Table>
   </TableContainer>
   
-  {/* Total row with fixed alignment */}
+  {/* Total row with improved alignment and dynamic totals */}
   {recommendedGrants.length > 0 && (
-    <Flex justify="space-between" mt={4} px={2} borderTop="1px" borderColor="gray.200" pt={2}>
-      <Text fontSize="sm" fontWeight="bold">Total</Text>
-      <Flex justifyContent="flex-end" width="100%">
-        <Text fontSize="sm" fontWeight="bold" width="25%" textAlign="right" pr={8}>
-          €160,000
-        </Text>
-        <Text fontSize="sm" fontWeight="bold" width="25%" textAlign="right">
-          €115,000
-        </Text>
-      </Flex>
-    </Flex>
+    <Table variant="simple" size="sm" mt={4}>
+      <Tr borderTop="1px solid" borderColor="gray.200">
+        <Td pl={4} pr={0} py={2}>
+          <Text fontSize="sm" fontWeight="bold">Total</Text>
+        </Td>
+        <Td isNumeric pr={4} py={2}>
+          <Text fontSize="sm" fontWeight="bold">
+            €{recommendedGrants.reduce((sum, grant) => 
+              sum + (grant.applied || grant.recommended * 0.7), 0).toLocaleString()}
+          </Text>
+        </Td>
+        <Td isNumeric pr={4} py={2}>
+          <Text fontSize="sm" fontWeight="bold">
+            €{recommendedGrants.reduce((sum, grant) => 
+              sum + (grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6), 0).toLocaleString()}
+          </Text>
+        </Td>
+      </Tr>
+    </Table>
   )}
 </Box>
   
