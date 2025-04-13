@@ -64,7 +64,7 @@ export default function Header() {
               fontWeight="bold"
               color="seai.primary"
             >
-              SEAI Energy Audit Dashboard
+              SEAI WattNext Dashboard
             </Text>
           </Flex>
           <HStack as={'nav'} spacing={4} display={{ base: 'none', md: 'flex' }}>

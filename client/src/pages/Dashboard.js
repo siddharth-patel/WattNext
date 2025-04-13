@@ -33,7 +33,8 @@ import {
   Icon,
   InputGroup,
   Input,
-  InputRightElement
+  InputRightElement,
+  useToast
 } from '@chakra-ui/react';
 import { 
   BarChart, 
@@ -73,11 +74,47 @@ const SectionHeading = ({ children, actionBtn }) => (
   </Flex>
 );
 
+// Helper function to export data to CSV
+const exportToCSV = (data, filename) => {
+  let csvContent = '';
+  
+  // Add header row
+  if (data && data.length > 0) {
+    const headers = Object.keys(data[0]);
+    csvContent += headers.join(',') + '\n';
+    
+    // Add data rows
+    data.forEach(item => {
+      const row = headers.map(header => {
+        const value = item[header];
+        // Handle special cases (objects, nulls, etc.)
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'object') return JSON.stringify(value).replace(/,/g, ';');
+        // Escape commas and quotes in string values
+        if (typeof value === 'string') return `"${value.replace(/"/g, '""')}"`;
+        return value;
+      });
+      csvContent += row.join(',') + '\n';
+    });
+  }
+  
+  // Create a download link and trigger it
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 export default function Dashboard({ data, isLoading }) {
   // State for filters
   const [region, setRegion] = useState('all');
   const [industry, setIndustry] = useState('all');
   const [year, setYear] = useState('all');
+  const toast = useToast();
   
   // Filter data based on selected filters
   const filterData = (items, hasOrgField = true) => {
@@ -294,17 +331,17 @@ export default function Dashboard({ data, isLoading }) {
     ];
   }, []);
   
-  // Recommended grants data - would be filtered if real data
+  // Recommended grants data - updated with new grant names
   const recommendedGrants = React.useMemo(() => {
-    return (data.recommendedGrants || []).filter(grant => {
-      if (region === 'all' && industry === 'all' && year === 'all') {
-        return true;
-      }
-      
-      const org = grant.organization;
-      return filteredOrganizations.includes(org);
-    });
-  }, [data.recommendedGrants, filteredOrganizations, region, industry, year]);
+    // Return predefined grants instead of filtering from data
+    return [
+      { name: 'Energy Audits', recommended: 45000, status: 'Applied' },
+      { name: 'Better Energy Communities Scheme', recommended: 75000, status: 'Eligible' },
+      { name: 'SME Energy Support Scheme', recommended: 35000, status: 'Recommended' },
+      { name: 'Excellence in Energy Efficient Design Grant', recommended: 28000, status: 'Eligible' },
+      { name: 'Support for Renewable Energy Installations', recommended: 52000, status: 'Applied' }
+    ];
+  }, []);
   
   // Auditor performance data - would be filtered if real data
   const auditorPerformance = React.useMemo(() => {
@@ -372,13 +409,13 @@ export default function Dashboard({ data, isLoading }) {
       
       totalGrants = filteredReports.reduce((sum, report) => sum + (report.data?.grantAmount || 0), 0);
       completionRate = Math.round((applicationStatus.completed / applicationStatus.total) * 100);
-      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.amount || 0), 0);
+      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.recommended || 0), 0);
     } else {
       // Default values if no reports match the filters
       auditConversion = data.auditConversion || 0;
       totalGrants = data.totalGrants || 0;
       completionRate = applicationStatus.completed > 0 ? Math.round((applicationStatus.completed / applicationStatus.total) * 100) : 0;
-      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.amount || 0), 0);
+      totalRecommendedGrants = recommendedGrants.reduce((sum, grant) => sum + (grant.recommended || 0), 0);
     }
     
     return {
@@ -414,6 +451,53 @@ export default function Dashboard({ data, isLoading }) {
     setIndustry('all');
     setYear('all');
   };
+  
+  // Handle export of dashboard data
+  const handleExportData = () => {
+    const exportData = {
+      summaryStats: {
+        totalAudits: filteredMetrics.totalAudits,
+        totalEmissionsSaved: filteredMetrics.totalEmissionsSaved,
+        totalEuroSaved: filteredMetrics.totalEuroSaved,
+        auditConversion: metrics.auditConversion,
+        totalGrants: metrics.totalGrants
+      },
+      energyData: filteredEnergyData,
+      recommendedActions: filteredRecommendedActions,
+      reports: filteredReports.map(report => ({
+        organizationName: report.organizationName,
+        uploadDate: report.uploadDate,
+        implementationStatus: report.data?.implementationStatus || 'pending',
+        region: report.data?.region || 'unknown',
+        industry: report.data?.industry || 'unknown',
+        totalCostSavings: report.data?.totalCostSavings || 0,
+        totalEmissionsSaved: report.data?.totalEmissionsSaved || 0,
+        grantAmount: report.data?.grantAmount || 0
+      }))
+    };
+    
+    // Convert to CSV-friendly format
+    const flatReports = exportData.reports.map(report => ({
+      Organization: report.organizationName,
+      UploadDate: report.uploadDate,
+      Status: report.implementationStatus,
+      Region: report.region,
+      Industry: report.industry,
+      CostSavings: report.totalCostSavings,
+      EmissionsSaved: report.totalEmissionsSaved,
+      GrantAmount: report.grantAmount
+    }));
+    
+    exportToCSV(flatReports, 'wattnext-dashboard-data.csv');
+    
+    toast({
+      title: "Export successful",
+      description: "Dashboard data has been exported to CSV",
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -425,8 +509,6 @@ export default function Dashboard({ data, isLoading }) {
 
   return (
     <Container maxW="container.xl" py={8}>
-      <Heading mb={4}>WattNext Energy Audit Dashboard</Heading>
-      
       {/* Filter Bar */}
       <Flex mb={6} wrap="wrap" gap={3} align="center">
         <Text fontWeight="medium" mr={2}>Filter by:</Text>
@@ -494,6 +576,7 @@ export default function Dashboard({ data, isLoading }) {
           leftIcon={<FiDownload />} 
           colorScheme="blue"
           ml="auto"
+          onClick={handleExportData}
         >
           Export
         </Button>
@@ -545,7 +628,7 @@ export default function Dashboard({ data, isLoading }) {
       
       {/* Additional Stats - Second Row */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg">
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
           <Flex justify="space-between" align="center" mb={4}>
             <Heading size="sm">Recommended Grants & Funding</Heading>
             <Badge colorScheme="green" fontSize="sm" p={1}>
@@ -557,8 +640,8 @@ export default function Dashboard({ data, isLoading }) {
               <Thead>
                 <Tr>
                   <Th>Grant Name</Th>
-                  <Th isNumeric>Amount</Th>
-                  <Th>Status</Th>
+                  <Th isNumeric>Recommended</Th>
+                  <Th>Applied</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -567,10 +650,10 @@ export default function Dashboard({ data, isLoading }) {
                     <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
                   </Tr>
                 ) : (
-                  recommendedGrants.slice(0, 4).map((grant, index) => (
+                  recommendedGrants.map((grant, index) => (
                     <Tr key={index}>
                       <Td>{grant.name}</Td>
-                      <Td isNumeric>€{grant.amount.toLocaleString()}</Td>
+                      <Td isNumeric>€{grant.recommended.toLocaleString()}</Td>
                       <Td>
                         <Badge 
                           colorScheme={
@@ -590,7 +673,7 @@ export default function Dashboard({ data, isLoading }) {
           </TableContainer>
         </Box>
         
-        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg">
+        <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
           <Heading size="sm" mb={4}>Completion Rate</Heading>
           <Flex justify="space-between" align="center" mb={6}>
             <CircularProgress 
@@ -792,7 +875,16 @@ export default function Dashboard({ data, isLoading }) {
       <Box mb={8}>
         <SectionHeading 
           actionBtn={
-            <Button size="sm" variant="outline" leftIcon={<FiDownload />}>
+            <Button size="sm" variant="outline" leftIcon={<FiDownload />} onClick={() => {
+              exportToCSV(filteredRecommendedActions, 'recommended-actions.csv');
+              toast({
+                title: "Export successful",
+                description: "Recommended actions exported to CSV",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+              });
+            }}>
               Export Actions
             </Button>
           }
@@ -885,22 +977,6 @@ export default function Dashboard({ data, isLoading }) {
             </Table>
           </TableContainer>
         </Box>
-      </Box>
-      
-      {/* Organizations */}
-      <Box mb={8}>
-        <SectionHeading>Organizations</SectionHeading>
-        {!filteredOrganizations || filteredOrganizations.length === 0 ? (
-          <Text color="gray.500">No organizations available for the selected filters.</Text>
-        ) : (
-          <Flex flexWrap="wrap" gap={2}>
-            {filteredOrganizations.map((org, index) => (
-              <Badge key={index} colorScheme="purple" p={2} borderRadius="md">
-                {org}
-              </Badge>
-            ))}
-          </Flex>
-        )}
       </Box>
     </Container>
   );
