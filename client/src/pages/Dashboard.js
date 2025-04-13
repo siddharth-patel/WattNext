@@ -637,7 +637,7 @@ export default function Dashboard({ data, isLoading }) {
       €235,000 AVAILABLE
     </Badge>
   </Flex>
-  <TableContainer overflowY="auto" maxHeight="240px">
+  <TableContainer overflowY="auto" maxHeight="270px">
     <Table variant="simple" size="sm">
       <Thead position="sticky" top={0} bg="white" zIndex={1}>
         <Tr>
@@ -652,43 +652,42 @@ export default function Dashboard({ data, isLoading }) {
             <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
           </Tr>
         ) : (
-          recommendedGrants.map((grant, index) => (
-            <Tr key={index}>
-              <Td borderBottom="1px solid" borderColor="gray.200">
-                <Text fontWeight="medium">{grant.name}</Text>
+          <>
+            {recommendedGrants.map((grant, index) => (
+              <Tr key={index}>
+                <Td borderBottom="1px solid" borderColor="gray.200">
+                  <Text fontWeight="medium">{grant.name}</Text>
+                </Td>
+                <Td isNumeric borderBottom="1px solid" borderColor="gray.200">
+                  €{(grant.applied || grant.recommended * 0.7).toLocaleString()}
+                </Td>
+                <Td isNumeric borderBottom="1px solid" borderColor="gray.200">
+                  €{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}
+                </Td>
+              </Tr>
+            ))}
+            
+            {/* Total row within the same table - ensures proper alignment */}
+            <Tr>
+              <Td fontWeight="bold">Total</Td>
+              <Td isNumeric fontWeight="bold">
+                €{recommendedGrants
+                  .reduce((sum, grant) => sum + (grant.applied || grant.recommended * 0.7), 0)
+                  .toLocaleString()}
               </Td>
-              <Td isNumeric borderBottom="1px solid" borderColor="gray.200">€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
-              <Td isNumeric borderBottom="1px solid" borderColor="gray.200">€{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}</Td>
+              <Td isNumeric fontWeight="bold">
+                €{recommendedGrants
+                  .reduce((sum, grant) => sum + (grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6), 0)
+                  .toLocaleString()}
+              </Td>
             </Tr>
-          ))
+          </>
         )}
       </Tbody>
     </Table>
   </TableContainer>
-  
-  {/* Total row with improved alignment and dynamic totals */}
-  {recommendedGrants.length > 0 && (
-    <Table variant="simple" size="sm" mt={4}>
-      <Tr borderTop="1px solid" borderColor="gray.200">
-        <Td pl={4} pr={0} py={2}>
-          <Text fontSize="sm" fontWeight="bold">Total</Text>
-        </Td>
-        <Td isNumeric pr={4} py={2}>
-          <Text fontSize="sm" fontWeight="bold">
-            €{recommendedGrants.reduce((sum, grant) => 
-              sum + (grant.applied || grant.recommended * 0.7), 0).toLocaleString()}
-          </Text>
-        </Td>
-        <Td isNumeric pr={4} py={2}>
-          <Text fontSize="sm" fontWeight="bold">
-            €{recommendedGrants.reduce((sum, grant) => 
-              sum + (grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6), 0).toLocaleString()}
-          </Text>
-        </Td>
-      </Tr>
-    </Table>
-  )}
 </Box>
+
   
   {/* Completion Rate Widget */}
   <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
