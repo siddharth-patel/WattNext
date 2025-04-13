@@ -335,13 +335,14 @@ export default function Dashboard({ data, isLoading }) {
   const recommendedGrants = React.useMemo(() => {
     // Return predefined grants instead of filtering from data
     return [
-      { name: 'Energy Audits', recommended: 45000, applied: 32000, status: 'Applied' },
-      { name: 'Better Energy Communities Scheme', recommended: 75000, applied: 55000, status: 'Eligible' },
-      { name: 'SME Energy Support Scheme', recommended: 35000, applied: 20000, status: 'Recommended' },
-      { name: 'Excellence in Energy Efficient Design Grant', recommended: 28000, applied: 15000, status: 'Eligible' },
-      { name: 'Support for Renewable Energy Installations', recommended: 52000, applied: 38000, status: 'Applied' }
+      { name: 'Energy Audits', recommended: 45000, applied: 32000, granted: 25000, status: 'Applied' },
+      { name: 'Better Energy Communities Scheme', recommended: 75000, applied: 55000, granted: 40000, status: 'Eligible' },
+      { name: 'SME Energy Support Scheme', recommended: 35000, applied: 20000, granted: 12000, status: 'Recommended' },
+      { name: 'Excellence in Energy Efficient Design Grant', recommended: 28000, applied: 15000, granted: 8000, status: 'Eligible' },
+      { name: 'Support for Renewable Energy Installations', recommended: 52000, applied: 38000, granted: 30000, status: 'Applied' }
     ];
   }, []);
+  
   
   // Auditor performance data - would be filtered if real data
   const auditorPerformance = React.useMemo(() => {
@@ -628,26 +629,28 @@ export default function Dashboard({ data, isLoading }) {
       
       {/* Additional Stats - Second Row */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
-  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+  {/* Recommended Grants & Funding Widget */}
+  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
     <Flex justify="space-between" align="center" mb={3}>
       <Heading size="sm">Recommended Grants & Funding</Heading>
       <Badge colorScheme="green" fontSize="sm" p={1}>
         €{metrics.totalRecommendedGrants.toLocaleString()} available
       </Badge>
     </Flex>
-    <TableContainer>
+    <TableContainer overflowY="auto" maxHeight="270px">
       <Table variant="simple" size="sm">
-        <Thead>
+        <Thead position="sticky" top={0} bg="white" zIndex={1}>
           <Tr>
             <Th>Grant Name</Th>
             <Th isNumeric>Recommended</Th>
             <Th isNumeric>Applied</Th>
+            <Th isNumeric>Granted</Th>
           </Tr>
         </Thead>
         <Tbody>
           {recommendedGrants.length === 0 ? (
             <Tr>
-              <Td colSpan={3} textAlign="center">No grants matching current filters</Td>
+              <Td colSpan={4} textAlign="center">No grants matching current filters</Td>
             </Tr>
           ) : (
             recommendedGrants.map((grant, index) => (
@@ -655,6 +658,7 @@ export default function Dashboard({ data, isLoading }) {
                 <Td>{grant.name}</Td>
                 <Td isNumeric>€{grant.recommended.toLocaleString()}</Td>
                 <Td isNumeric>€{(grant.applied || grant.recommended * 0.7).toLocaleString()}</Td>
+                <Td isNumeric>€{(grant.granted || (grant.applied || grant.recommended * 0.7) * 0.6).toLocaleString()}</Td>
               </Tr>
             ))
           )}
@@ -663,7 +667,8 @@ export default function Dashboard({ data, isLoading }) {
     </TableContainer>
   </Box>
   
-  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="300px">
+  {/* Completion Rate Widget */}
+  <Box p={5} shadow="md" borderWidth="1px" bg="white" borderRadius="lg" height="350px">
     <Heading size="sm" mb={4}>Completion Rate</Heading>
     <Flex flexDirection={{ base: "column", md: "row" }} align="center" justify="space-between">
       <Box width={{ base: "100%", md: "40%" }} mb={{ base: 4, md: 0 }}>
@@ -676,7 +681,7 @@ export default function Dashboard({ data, isLoading }) {
           <CircularProgressLabel fontWeight="bold" fontSize="xl">{metrics.completionRate}%</CircularProgressLabel>
         </CircularProgress>
         
-        <Box mt={4}>
+        <Box mt={6}>
           <Flex justify="space-between">
             <Text fontSize="sm" fontWeight="medium">Total Applications</Text>
             <Text fontSize="sm" fontWeight="bold">{applicationStatus.total}</Text>
@@ -706,12 +711,20 @@ export default function Dashboard({ data, isLoading }) {
           <Progress value={(applicationStatus.inProgress / applicationStatus.total) * 100} size="md" colorScheme="yellow" borderRadius="md" />
         </Box>
         
-        <Box mb={2}>
+        <Box mb={4}>
           <Flex justify="space-between" mb={1}>
             <Text fontSize="sm">Completed</Text>
             <Text fontSize="sm" fontWeight="medium">{applicationStatus.completed}</Text>
           </Flex>
           <Progress value={(applicationStatus.completed / applicationStatus.total) * 100} size="md" colorScheme="green" borderRadius="md" />
+        </Box>
+        
+        <Box mb={2}>
+          <Flex justify="space-between" mb={1}>
+            <Text fontSize="sm">Rejected</Text>
+            <Text fontSize="sm" fontWeight="medium">{applicationStatus.rejected}</Text>
+          </Flex>
+          <Progress value={(applicationStatus.rejected / applicationStatus.total) * 100} size="md" colorScheme="red" borderRadius="md" />
         </Box>
         
         <HStack mt={4} spacing={4} justify="space-between">
